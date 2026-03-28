@@ -1,0 +1,16 @@
+[package]
+name = "paper-immersive-reader"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+  "crates/core",
+  "crates/gateway",
+  "crates/cli",
+]
+resolver = "2"
+
+[dev-dependencies]
+paper-immersive-reader-core = { path = "crates/core" }
+

@@ -1,0 +1,7 @@
+[package]
+name = "paper-immersive-reader-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+paper-immersive-reader-core = { path = "../core" }

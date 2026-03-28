@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+pub mod domain;
 pub mod logging;
 
 pub fn workspace_marker() -> &'static str {

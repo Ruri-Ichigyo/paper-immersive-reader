@@ -1,5 +1,8 @@
 # Reader Domain Models (Minimal Reading Core) Implementation Plan
 
+**Status:** Planned
+**Date:** 2026-03-28
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Implement the minimal reader domain model in `crates/core` (Paper/Block/ReadingProgress + IDs + DomainError) with integration tests under `tests/`.

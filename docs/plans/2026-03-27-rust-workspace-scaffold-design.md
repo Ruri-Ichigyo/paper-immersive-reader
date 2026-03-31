@@ -1,5 +1,8 @@
 # Rust Workspace Scaffold Design
 
+**Status:** Approved
+**Date:** 2026-03-27
+
 ## Goal
 Define the first implementation milestone for the `paper-immersive-reader` codebase as a Rust workspace scaffold that is consistent with the repository governance in `AGENTS.md` and ready for later reader, sync, and integration features.
 

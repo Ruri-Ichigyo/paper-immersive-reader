@@ -1,5 +1,8 @@
 # AGENTS Governance Design
 
+**Status:** Approved
+**Date:** 2026-03-27
+
 ## Goal
 Create a strict, self-consistent `AGENTS.md` governance document for the `paper-immersive-reader` repository so future human and AI contributors follow the same repository layout, tooling, logging, testing, clarification, and delivery discipline.
 

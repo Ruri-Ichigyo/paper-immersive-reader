@@ -1,5 +1,8 @@
 # AGENTS Governance Implementation Plan
 
+**Status:** Planned
+**Date:** 2026-03-27
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Create and validate a strict `AGENTS.md` governance document for the repository, aligned to Rust + cargo and the user’s mandatory project rules.

@@ -1,5 +1,7 @@
 # Import Pipeline Skeleton Design (M1.2 — Minimal Runnable Paste Text Import)
 
+**Status:** Approved
+**Date:** 2026-03-28
 **Project:** Paper Immersive Reader
 
 **Scope:** Milestone M1.2 — Import pipeline skeleton with a runnable `paste text` path.

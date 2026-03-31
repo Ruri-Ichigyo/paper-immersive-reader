@@ -1,5 +1,8 @@
 # Rust Workspace Scaffold Implementation Plan
 
+**Status:** Planned
+**Date:** 2026-03-27
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Create a Rust Cargo workspace scaffold for `paper-immersive-reader` with `core`, `gateway`, and `cli` crates, governance-compliant directories, initial logging bootstrap, and initial tests.

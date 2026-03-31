@@ -1,5 +1,7 @@
 # Reader Domain Models Design (Minimal Reading Core)
 
+**Status:** Approved
+**Date:** 2026-03-28
 **Project:** Paper Immersive Reader
 
 **Scope:** Milestone M1.1 — Minimal reading domain types in `crates/core`

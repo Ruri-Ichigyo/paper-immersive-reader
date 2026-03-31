@@ -1,5 +1,8 @@
 # Import Pipeline Skeleton (M1.2 — Minimal Runnable Paste Text Import) Implementation Plan
 
+**Status:** Planned
+**Date:** 2026-03-28
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add a new `crates/importing` crate that defines an import pipeline abstraction and a runnable `paste text` import path producing `Paper`, `Block`, and `ReadingProgress` from `paper-immersive-reader-core`.

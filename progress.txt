@@ -12,3 +12,11 @@ Next:
 Next:
 - Extend import pipeline beyond paste: PDF/text extraction skeleton + lifecycle state machine wiring
 - Replace placeholder logging path generation with timestamped file bootstrap via tracing
+
+2026-03-31
+- Milestone M1.3 completed: added PDF import request support and a minimal PDF extraction seam in `crates/importing`
+- Added integration tests for PDF import happy path, OCR-required boundary, and extractor failure mapping
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Replace deterministic PDF extractor fakes with a real embedded-text extraction implementation
+- Add richer OCR-boundary reasons and decide how OCR work is queued or invoked

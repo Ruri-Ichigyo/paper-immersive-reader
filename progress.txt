@@ -12,3 +12,12 @@ Next:
 Next:
 - Extend import pipeline beyond paste: PDF/text extraction skeleton + lifecycle state machine wiring
 - Replace placeholder logging path generation with timestamped file bootstrap via tracing
+
+2026-04-02
+- Milestone M1.5 completed: added OCR job domain types in `crates/core` with explicit `OcrEngine::PaddleOcr`
+- Added validated OCR job lifecycle transitions, OCR job result type, and minimal repository interface shape
+- Added focused tests for exports, construction, results, transitions, and repository trait implementability
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Connect OCR job creation to the `OcrRequired` import boundary without coupling import to execution
+- Design or implement the local async executor that claims queued PaddleOCR jobs and records results

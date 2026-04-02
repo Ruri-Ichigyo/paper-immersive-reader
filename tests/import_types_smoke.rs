@@ -21,21 +21,26 @@ fn importing_types_exist() {
 
     fn _assert_pipeline<T: ImportPipeline>(_t: &T) {}
 
+    let pipeline = DefaultImportPipeline::new_for_tests();
+    _assert_pipeline(&pipeline);
+
     let _maybe: Option<ImportResult> = None;
     assert!(_maybe.is_none());
 }
 
 #[test]
-fn pdf_document_placeholder_returns_extraction_failed_instead_of_panicking() {
-    let pipeline = DefaultImportPipeline::new_for_tests();
+fn default_and_test_pdf_pipeline_constructors_return_typed_errors() {
+    let _default_pipeline = DefaultImportPipeline::new();
 
-    let err = pipeline
+    let test_pipeline = DefaultImportPipeline::new_for_tests();
+
+    let err = test_pipeline
         .import(ImportRequest::PdfDocument {
             bytes: vec![1, 2, 3],
             title: Some("paper".to_string()),
             source_ref: None,
         })
-        .expect_err("PDF placeholder should return a typed error");
+        .expect_err("test PDF constructor should return a typed seam error");
 
     assert_eq!(err, ImportPipelineError::PdfExtractionFailed);
 }

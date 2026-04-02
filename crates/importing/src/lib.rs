@@ -1,8 +1,12 @@
+mod pdf;
+
 use std::sync::Arc;
 
 use paper_immersive_reader_core::domain::{
     Block, BlockId, DomainError, Paper, PaperId, PaperSourceType, PaperStatus, ReadingProgress,
 };
+
+use crate::pdf::RealPdfTextExtractor;
 
 pub enum ImportRequest {
     PasteText {
@@ -53,7 +57,7 @@ impl PdfTextExtractor for PdfExtractorMode {
         match self {
             Self::Unavailable => Err(ImportPipelineError::PdfExtractionFailed),
             Self::Deterministic(text) => Ok(text.clone()),
-            Self::Fail => Err(ImportPipelineError::EmptyInput),
+            Self::Fail => Err(ImportPipelineError::PdfExtractionFailed),
         }
     }
 }
@@ -63,7 +67,17 @@ pub struct DefaultImportPipeline {
     pdf_text_extractor: Arc<dyn PdfTextExtractor>,
 }
 
+impl Default for DefaultImportPipeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefaultImportPipeline {
+    pub fn new() -> Self {
+        Self::new_with_pdf_extractor(RealPdfTextExtractor)
+    }
+
     pub fn new_for_tests() -> Self {
         Self::new_with_pdf_extractor(PdfExtractorMode::Unavailable)
     }
@@ -103,7 +117,7 @@ impl DefaultImportPipeline {
         let paper = Paper {
             id: PaperId(self.next_paper_id.clone()),
             title,
-            source_type,
+            source_type: source_type.clone(),
             source_ref,
             status: PaperStatus::ReadyText,
             parse_version: 1,
@@ -117,7 +131,10 @@ impl DefaultImportPipeline {
             .collect();
 
         if segments.is_empty() {
-            return Err(ImportPipelineError::NoBlocksProduced);
+            return match source_type {
+                PaperSourceType::Pdf => Err(ImportPipelineError::OcrRequired),
+                _ => Err(ImportPipelineError::NoBlocksProduced),
+            };
         }
 
         let blocks: Vec<Block> = segments
@@ -163,10 +180,7 @@ impl ImportPipeline for DefaultImportPipeline {
                 title,
                 source_ref,
             } => {
-                let text = self
-                    .pdf_text_extractor
-                    .extract_text(&bytes)
-                    .map_err(|_| ImportPipelineError::PdfExtractionFailed)?;
+                let text = self.pdf_text_extractor.extract_text(&bytes)?;
                 self.import_text(text, title, source_ref, PaperSourceType::Pdf)
             }
         }

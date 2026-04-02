@@ -20,3 +20,12 @@ Next:
 Next:
 - Replace deterministic PDF extractor fakes with a real embedded-text extraction implementation
 - Add richer OCR-boundary reasons and decide how OCR work is queued or invoked
+
+2026-04-02
+- Milestone M1.4 completed: replaced the fake PDF extractor with a real embedded-text extraction path in `crates/importing`
+- Added real PDF fixtures and integration tests for embedded-text happy path and no-usable-text OCR boundary behavior
+- Kept seam-level PDF tests for injected extractor behavior and typed failure coverage
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Evaluate richer OCR-boundary reasons without changing the simple import API
+- Decide whether real OCR work should be modeled as queued jobs, synchronous fallback, or separate pipeline stages

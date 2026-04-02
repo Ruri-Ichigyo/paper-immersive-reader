@@ -20,3 +20,16 @@
 - What was tried: reran focused verification, read the current `crates/core/src/lib.rs` and importing crate source, compared against the earlier domain-model commit state, and confirmed the missing export mismatch rather than a test-only problem.
 - Final fix: restored `pub mod domain;` in `crates/core/src/lib.rs` and re-added `crates/importing` plus `paper-immersive-reader-importing` to the root `Cargo.toml` workspace/test wiring.
 - Prevention: after history recovery or partial resets, rerun full workspace verification before pushing and compare key public API files against the intended earlier commit when symptoms suggest a missing export.
+
+## 2026-04-02 (real PDF extraction fixtures and clippy)
+- Symptom: the first real embedded-text PDF fixture was accepted by some PDF tools but rejected by the selected extraction library, which pushed the implementation toward an unnecessary handwritten fallback parser.
+- Root cause: the fixture itself was malformed enough for `pdf-extract` to reject it, so the apparent extractor limitation was actually bad test input rather than missing product behavior.
+- What was tried: verified the failure on the real extractor path, compared fixture behavior against the library, then regenerated a small valid embedded-text fixture and removed the fallback parser to get back to the intended design.
+- Final fix: replaced the malformed fixture with a valid minimal embedded-text PDF and kept the real extractor path limited to the chosen library plus the existing OCR-boundary mapping.
+- Prevention: treat fixture validity as part of root-cause analysis when adding format-specific tests; fix the fixture before adding production fallbacks.
+-
+- Symptom: `cargo clippy --workspace --all-targets --all-features -- -D warnings` failed after adding `DefaultImportPipeline::new()`.
+- Root cause: Clippy's `new_without_default` lint requires a matching `Default` implementation when a parameterless `new()` constructor is introduced.
+- What was tried: reran clippy, read the exact lint output, and confirmed the failure was an API-shape issue rather than extractor logic.
+- Final fix: added `impl Default for DefaultImportPipeline { fn default() -> Self { Self::new() } }`.
+- Prevention: when adding zero-argument constructors in this repo, immediately add `Default` or explicitly justify why the type should not implement it.

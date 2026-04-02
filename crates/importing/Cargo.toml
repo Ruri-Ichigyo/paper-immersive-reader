@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 paper-immersive-reader-core = { path = "../core" }
+pdf-extract = "0.10.0"

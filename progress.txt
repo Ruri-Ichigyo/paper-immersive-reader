@@ -38,3 +38,12 @@ Next:
 Next:
 - Connect OCR job creation to the `OcrRequired` import boundary without coupling import to execution
 - Design or implement the local async executor that claims queued PaddleOCR jobs and records results
+
+2026-04-03
+- Milestone M1.6 completed: added OCR enqueue orchestration and a minimal local executor boundary
+- Added orchestrator coverage for imported-text success and queue-on-`OcrRequired` behavior
+- Added local executor success, failure, and invalid-state tests plus a PaddleOCR runner boundary
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Persist OCR enqueue/execution state outside in-memory test repos
+- Decide whether executor triggering should be explicit-only or also support background polling in a later milestone

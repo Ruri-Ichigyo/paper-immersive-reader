@@ -28,7 +28,34 @@ impl<P, S> ImportOrchestrator<P, S> {
     }
 }
 
-impl<P, S> ImportOrchestrator<P, S>
+impl<P, R, JobIdFactory, PaperIdFactory, TimestampFactory>
+    ImportOrchestrator<
+        P,
+        crate::orchestration::OcrJobService<R, JobIdFactory, PaperIdFactory, TimestampFactory>,
+    >
+where
+    P: ImportPipeline,
+    R: paper_immersive_reader_core::domain::OcrJobRepository,
+    JobIdFactory: FnMut() -> OcrJobId,
+    PaperIdFactory: FnMut() -> PaperId,
+    TimestampFactory: FnMut() -> u64,
+{
+    pub fn import(
+        &mut self,
+        request: ImportRequest,
+    ) -> Result<ImportOrchestrationResult, ImportPipelineError> {
+        match self.pipeline.import(request) {
+            Ok(_) => Ok(ImportOrchestrationResult::ImportedText),
+            Err(ImportPipelineError::OcrRequired) => {
+                let (paper_id, job_id) = self.ocr_job_service.queue_paddle_ocr();
+                Ok(ImportOrchestrationResult::QueuedOcr { paper_id, job_id })
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<P> ImportOrchestrator<P>
 where
     P: ImportPipeline,
 {

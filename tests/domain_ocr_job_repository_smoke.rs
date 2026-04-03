@@ -23,6 +23,14 @@ impl OcrJobRepository for NoopRepo {
             .collect()
     }
 
+    fn replace_job(&mut self, job: OcrJob) {
+        if let Some(existing) = self.jobs.iter_mut().find(|existing| existing.id == job.id) {
+            *existing = job;
+        } else {
+            self.jobs.push(job);
+        }
+    }
+
     fn save_result(&mut self, result: OcrJobResult) {
         self.results.push(result);
     }

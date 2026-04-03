@@ -87,5 +87,6 @@ pub trait OcrJobRepository {
     fn create_job(&mut self, job: OcrJob);
     fn get_job(&self, id: &OcrJobId) -> Option<&OcrJob>;
     fn list_jobs_for_paper(&self, paper_id: &PaperId) -> Vec<&OcrJob>;
+    fn replace_job(&mut self, job: OcrJob);
     fn save_result(&mut self, result: OcrJobResult);
 }

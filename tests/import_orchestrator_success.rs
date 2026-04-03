@@ -13,8 +13,5 @@ fn import_orchestrator_returns_imported_text_when_pipeline_succeeds() {
         })
         .expect("orchestrator should succeed");
 
-    assert!(matches!(
-        result,
-        ImportOrchestrationResult::ImportedText
-    ));
+    assert!(matches!(result, ImportOrchestrationResult::ImportedText));
 }

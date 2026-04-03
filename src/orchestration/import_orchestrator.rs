@@ -1,8 +1,6 @@
 use paper_immersive_reader_core::domain::{OcrJobId, PaperId};
 use paper_immersive_reader_importing::{ImportPipeline, ImportPipelineError, ImportRequest};
 
-use crate::orchestration::OcrJobService;
-
 pub struct ImportOrchestrator<P, S = ()> {
     pipeline: P,
     ocr_job_service: S,

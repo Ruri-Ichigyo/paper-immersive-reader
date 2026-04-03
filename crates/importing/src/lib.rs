@@ -21,6 +21,7 @@ pub struct ImportResult {
 pub enum ImportPipelineError {
     EmptyInput,
     NoBlocksProduced,
+    OcrRequired { paper_id: PaperId },
     Domain(DomainError),
 }
 

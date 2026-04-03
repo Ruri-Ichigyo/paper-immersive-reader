@@ -12,6 +12,10 @@ members = [
 ]
 resolver = "2"
 
+[dependencies]
+paper-immersive-reader-core = { path = "crates/core" }
+paper-immersive-reader-importing = { path = "crates/importing" }
+
 [dev-dependencies]
 paper-immersive-reader-core = { path = "crates/core" }
 paper-immersive-reader-importing = { path = "crates/importing" }

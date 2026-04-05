@@ -1,0 +1,23 @@
+2026-03-28
+- Milestone M0 completed: root Cargo workspace scaffolded with core/gateway/cli crates
+- Added integration smoke tests for workspace, core, and logging path behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+- Milestone M1.1 completed: added core domain models for Paper, Block, and ReadingProgress
+- Added integration tests covering domain exports, paper construction, block validation, and reading progress
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Milestone M1.2: added importing crate + minimal runnable paste-text import pipeline
+- Added integration tests for importing crate linkability, types, paste import happy path, segmentation, and empty-input error
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Extend import pipeline beyond paste: PDF/text extraction skeleton + lifecycle state machine wiring
+- Replace placeholder logging path generation with timestamped file bootstrap via tracing
+
+2026-04-02
+- Milestone M1.4 completed: replaced the fake PDF extractor with a real embedded-text extraction path in `crates/importing`
+- Added real PDF fixtures and integration tests for embedded-text happy path and no-usable-text OCR boundary behavior
+- Kept seam-level PDF tests for injected extractor behavior and typed failure coverage
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Evaluate richer OCR-boundary reasons without changing the simple import API
+- Decide whether real OCR work should be modeled as queued jobs, synchronous fallback, or separate pipeline stages

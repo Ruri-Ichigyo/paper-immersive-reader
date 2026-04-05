@@ -1,5 +1,8 @@
 # Real PDF Text Extraction Implementation Plan
 
+**Status:** Done
+**Date:** 2026-03-31
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Replace the fake PDF text extractor with a real embedded-text extraction path in `crates/importing` while keeping the current PDF import orchestration and OCR boundary behavior simple.

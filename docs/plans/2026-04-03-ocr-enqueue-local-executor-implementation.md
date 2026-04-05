@@ -1,5 +1,8 @@
 # OCR Enqueue and Local Executor Implementation Plan
 
+**Status:** Done
+**Date:** 2026-04-03
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add a thin orchestration layer that converts `OcrRequired` import outcomes into queued PaddleOCR jobs, plus a minimal local executor that processes those jobs without coupling OCR execution into the import pipeline.

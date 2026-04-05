@@ -1,7 +1,8 @@
 use super::block::BlockId;
 use super::paper::PaperId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReadingProgress {
     pub paper_id: PaperId,
     pub current_block_index: u32,

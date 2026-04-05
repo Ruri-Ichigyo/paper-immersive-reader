@@ -29,11 +29,18 @@ pub struct ImportResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextImportArtifacts {
+    pub blocks: Vec<Block>,
+    pub reading_progress: ReadingProgress,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportPipelineError {
     EmptyInput,
     NoBlocksProduced,
     PdfExtractionFailed,
     OcrRequired,
+    PersistenceFailed,
     Domain(DomainError),
 }
 
@@ -107,13 +114,6 @@ impl DefaultImportPipeline {
         source_ref: Option<String>,
         source_type: PaperSourceType,
     ) -> Result<ImportResult, ImportPipelineError> {
-        if text.trim().is_empty() {
-            return match source_type {
-                PaperSourceType::Pdf => Err(ImportPipelineError::OcrRequired),
-                _ => Err(ImportPipelineError::EmptyInput),
-            };
-        }
-
         let paper = Paper {
             id: PaperId(self.next_paper_id.clone()),
             title,
@@ -122,47 +122,20 @@ impl DefaultImportPipeline {
             status: PaperStatus::ReadyText,
             parse_version: 1,
         };
-
-        let segments: Vec<String> = text
-            .split("\n\n")
-            .map(str::trim)
-            .filter(|segment| !segment.is_empty())
-            .map(ToOwned::to_owned)
-            .collect();
-
-        if segments.is_empty() {
-            return match source_type {
-                PaperSourceType::Pdf => Err(ImportPipelineError::OcrRequired),
-                _ => Err(ImportPipelineError::NoBlocksProduced),
-            };
-        }
-
-        let blocks: Vec<Block> = segments
-            .into_iter()
-            .enumerate()
-            .map(|(index, segment)| {
-                Block::try_new(
-                    BlockId(format!("block-{}", index)),
-                    paper.id.clone(),
-                    index as u32,
-                    segment,
-                    None,
-                )
-                .map_err(ImportPipelineError::Domain)
-            })
-            .collect::<Result<_, _>>()?;
-
-        let reading_progress = ReadingProgress {
-            paper_id: paper.id.clone(),
-            current_block_index: 0,
-            current_block_id: Some(blocks[0].id.clone()),
-            updated_at_ms: 0,
+        let artifacts = match segment_text_for_existing_paper(&paper, text, 0) {
+            Ok(artifacts) => artifacts,
+            Err(ImportPipelineError::EmptyInput | ImportPipelineError::NoBlocksProduced)
+                if source_type == PaperSourceType::Pdf =>
+            {
+                return Err(ImportPipelineError::OcrRequired);
+            }
+            Err(err) => return Err(err),
         };
 
         Ok(ImportResult {
             paper,
-            blocks,
-            reading_progress,
+            blocks: artifacts.blocks,
+            reading_progress: artifacts.reading_progress,
         })
     }
 }
@@ -185,4 +158,52 @@ impl ImportPipeline for DefaultImportPipeline {
             }
         }
     }
+}
+
+pub fn segment_text_for_existing_paper(
+    paper: &Paper,
+    text: String,
+    updated_at_ms: u64,
+) -> Result<TextImportArtifacts, ImportPipelineError> {
+    if text.trim().is_empty() {
+        return Err(ImportPipelineError::EmptyInput);
+    }
+
+    let segments: Vec<String> = text
+        .split("\n\n")
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+
+    if segments.is_empty() {
+        return Err(ImportPipelineError::NoBlocksProduced);
+    }
+
+    let blocks: Vec<Block> = segments
+        .into_iter()
+        .enumerate()
+        .map(|(index, segment)| {
+            Block::try_new(
+                BlockId(format!("block-{}", index)),
+                paper.id.clone(),
+                index as u32,
+                segment,
+                None,
+            )
+            .map_err(ImportPipelineError::Domain)
+        })
+        .collect::<Result<_, _>>()?;
+
+    let reading_progress = ReadingProgress {
+        paper_id: paper.id.clone(),
+        current_block_index: 0,
+        current_block_id: Some(blocks[0].id.clone()),
+        updated_at_ms,
+    };
+
+    Ok(TextImportArtifacts {
+        blocks,
+        reading_progress,
+    })
 }

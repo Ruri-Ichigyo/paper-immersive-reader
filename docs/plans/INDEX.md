@@ -51,12 +51,17 @@ Should usually include a short top summary with fields such as:
 
 | Topic | Date | Design | Implementation | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| agents-governance | 2026-03-27 | yes | yes | Planned | Governance design approved; implementation plan present |
-| rust-workspace-scaffold | 2026-03-27 | yes | yes | Planned | Initial workspace scaffold planning pair |
-| import-pipeline-skeleton | 2026-03-28 | yes | yes | Planned | Paste-text import milestone planning pair |
-| reader-domain-models | 2026-03-28 | yes | yes | Planned | Core reading domain planning pair |
-| pdf-extraction-skeleton | 2026-03-28 | yes | yes | Planned | PDF extraction milestone planning pair |
-| plans-governance | 2026-03-31 | yes | yes | Planned | Lightweight governance planning pair for the plans directory |
+| agents-governance | 2026-03-27 | yes | yes | Done | Root `AGENTS.md` governance artifact is in place |
+| rust-workspace-scaffold | 2026-03-27 | yes | yes | Done | Cargo workspace, crate scaffold, and logging bootstrap landed |
+| import-pipeline-skeleton | 2026-03-28 | yes | yes | Done | Paste-text import path is implemented and covered by tests |
+| reader-domain-models | 2026-03-28 | yes | yes | Done | Core domain types and invariants are implemented in `crates/core` |
+| pdf-extraction-skeleton | 2026-03-28 | yes | yes | Done | PDF seam and `OcrRequired` boundary are implemented |
+| plans-governance | 2026-03-31 | yes | yes | Done | `INDEX.md` and plan metadata normalization rules are active |
+| real-pdf-text-extraction | 2026-03-31 | yes | yes | Done | Real embedded-text extraction fixtures and default path are implemented |
+| ocr-job-model-paddle | 2026-04-02 | yes | yes | Done | OCR job model, transitions, and repository seam are implemented |
+| ocr-enqueue-local-executor | 2026-04-03 | yes | yes | Done | OCR enqueue orchestration and local executor boundary are implemented |
+| ocr-json-persistence-local-queue | 2026-04-05 | yes | yes | Done | Application crate migration and JSON-backed OCR queue closure are implemented |
+| cli-ocr-managed-assets | 2026-04-05 | yes | yes | Done | Managed PDF assets, script-backed OCR runner, and CLI OCR commands are implemented |
 
 ## Maintenance Rules
 

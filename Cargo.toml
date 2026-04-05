@@ -5,6 +5,7 @@ edition = "2021"
 
 [workspace]
 members = [
+  "crates/application",
   "crates/core",
   "crates/gateway",
   "crates/cli",
@@ -13,10 +14,11 @@ members = [
 resolver = "2"
 
 [dependencies]
+paper-immersive-reader-application = { path = "crates/application" }
 paper-immersive-reader-core = { path = "crates/core" }
 paper-immersive-reader-importing = { path = "crates/importing" }
 
 [dev-dependencies]
+paper-immersive-reader-application = { path = "crates/application" }
 paper-immersive-reader-core = { path = "crates/core" }
 paper-immersive-reader-importing = { path = "crates/importing" }
-

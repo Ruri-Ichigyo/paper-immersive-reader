@@ -1,5 +1,8 @@
 # OCR Job Model (PaddleOCR) Implementation Plan
 
+**Status:** Done
+**Date:** 2026-04-02
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add a minimal OCR job domain model in `crates/core` that explicitly targets PaddleOCR and represents queued OCR work, status transitions, and result linkage without implementing the runner itself.

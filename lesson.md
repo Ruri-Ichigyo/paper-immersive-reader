@@ -124,3 +124,10 @@
 - What was tried: verified that no Git process or stale lock remained, reran the merge sequentially, then ran merged-result verification and used the `cargo fmt --check` failure output to confirm the remaining delta was formatting-only.
 - Final fix: completed the merge sequentially, ran `cargo fmt` on `master`, and reran `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` on the merged result before cleanup.
 - Prevention: do not parallelize Git operations that need the index lock, and after a fast-forward merge rerun the repository verification suite exactly as the integration target will see it before declaring the merge complete.
+
+## 2026-04-06 (plans archive reorganization)
+- Symptom: `docs/plans/INDEX.md` still enforced an in-place completed-plan policy that conflicted with the new archive request, and the first shell move attempt used an invalid `find -exec` form.
+- Root cause: the earlier plans governance assumed completed topics should stay in `docs/plans/`, and the first cleanup command was more brittle than necessary for a simple bulk move.
+- What was tried: audited the current plan-status table, compared it against the directory contents, attempted a `find ... -exec mv` move, and then simplified the operation after confirming every tracked topic was complete.
+- Final fix: moved all completed plan documents into `docs/plans/archive/`, added `docs/plans/archive/INDEX.md`, and rewrote `docs/plans/INDEX.md` so it now lists unfinished plans only.
+- Prevention: when plan-directory policy changes, update the governing index in the same change and prefer the simplest verifiable shell move over a more error-prone one-liner.

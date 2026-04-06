@@ -195,3 +195,10 @@ Next:
 - Local branch integration is complete; remaining repository state is the local `master` branch ahead of `origin/master`
 Next:
 - Push `master` when ready
+
+2026-04-06 17:30:33 CST
+- Archived all completed plan documents from `docs/plans/` into `docs/plans/archive/`
+- Rewrote `docs/plans/INDEX.md` to track unfinished plans only and added `docs/plans/archive/INDEX.md` as the archive manifest
+- Confirmed there are currently no unfinished plan topics left under `docs/plans/`
+Next:
+- Add the next approved unfinished topic back under `docs/plans/` and update both indexes when it is completed

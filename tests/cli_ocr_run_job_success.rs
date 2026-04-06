@@ -81,8 +81,5 @@ fn cli_ocr_run_executes_only_the_requested_job() {
         .snapshot()
         .expect("snapshot should load");
     assert_eq!(snapshot.ocr_jobs[0].status, OcrJobStatus::Queued);
-    assert_eq!(
-        snapshot.ocr_jobs[1].status,
-        OcrJobStatus::Completed
-    );
+    assert_eq!(snapshot.ocr_jobs[1].status, OcrJobStatus::Completed);
 }

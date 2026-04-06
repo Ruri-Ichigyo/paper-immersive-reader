@@ -117,3 +117,10 @@
 - What was tried: rewrote the JSON smoke test first so it required a migration-specific loader and asserted the public default path was the SQLite database path, then replaced remaining external JSON test setup calls with `load_migration_input`, removed the JSON default-path re-export, and dropped the now-unused fallback loader.
 - Final fix: `JsonAppStateStore` now exposes `load_migration_input` for migration-oriented setup, the public persistence module no longer exports a JSON default runtime path, and the test suite still covers legacy JSON behavior without presenting it as the runtime default.
 - Prevention: when retiring a former default backend, update the public API names and re-exports, not just the runtime call sites, so downstream callers and tests stop treating the retired backend as the canonical path.
+
+## 2026-04-06 (local merge cleanup)
+- Symptom: the first attempt to merge the finished feature branch into `master` failed with a transient Git `index.lock`, and the first merged-result verification pass then failed on `cargo fmt --check`.
+- Root cause: I incorrectly ran Git operations in parallel during branch finalization, which created a temporary lock conflict, and the merged commit itself still contained formatting drift that the earlier verification loop had not normalized before commit.
+- What was tried: verified that no Git process or stale lock remained, reran the merge sequentially, then ran merged-result verification and used the `cargo fmt --check` failure output to confirm the remaining delta was formatting-only.
+- Final fix: completed the merge sequentially, ran `cargo fmt` on `master`, and reran `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` on the merged result before cleanup.
+- Prevention: do not parallelize Git operations that need the index lock, and after a fast-forward merge rerun the repository verification suite exactly as the integration target will see it before declaring the merge complete.

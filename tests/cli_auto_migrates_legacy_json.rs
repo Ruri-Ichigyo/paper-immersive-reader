@@ -13,8 +13,7 @@ fn cli_ocr_run_next_auto_migrates_legacy_json_before_running_job() {
     let db_path = temp_root.join("database").join("app-state.db");
     let migrated_json_path = temp_root.join("database").join("app-state.migrated.json");
 
-    let mut store =
-        JsonAppStateStore::load_migration_input(&json_path).expect("store should load");
+    let mut store = JsonAppStateStore::load_migration_input(&json_path).expect("store should load");
     let paper_id = PaperId("paper-1".to_string());
     store.snapshot_mut().papers.push(Paper {
         id: paper_id.clone(),

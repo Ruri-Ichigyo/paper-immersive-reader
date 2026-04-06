@@ -8,7 +8,8 @@ use paper_immersive_reader_core::domain::{
 
 #[test]
 fn cli_ocr_run_next_executes_a_queued_sqlite_job_and_prints_success() {
-    let temp_root = cli_support::create_temp_workspace("paper-immersive-reader-cli-run-next-sqlite");
+    let temp_root =
+        cli_support::create_temp_workspace("paper-immersive-reader-cli-run-next-sqlite");
     let db_path = temp_root.join("database").join("app-state.db");
 
     let mut store = SqliteAppStateStore::open(&db_path).expect("store should open");
@@ -52,11 +53,7 @@ fn cli_ocr_run_next_executes_a_queued_sqlite_job_and_prints_success() {
 
     let reloaded = SqliteAppStateStore::open(&db_path).expect("store should reload");
     assert_eq!(
-        reloaded
-            .snapshot()
-            .expect("snapshot should load")
-            .ocr_jobs[0]
-            .status,
+        reloaded.snapshot().expect("snapshot should load").ocr_jobs[0].status,
         OcrJobStatus::Completed
     );
 }

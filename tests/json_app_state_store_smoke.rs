@@ -6,8 +6,7 @@ fn json_app_state_store_remains_available_for_migration_input_while_sqlite_is_de
     let temp_path = std::env::temp_dir().join("paper-immersive-reader-json-app-state-smoke.json");
     let _ = std::fs::remove_file(&temp_path);
 
-    let mut store =
-        JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
+    let mut store = JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
     assert!(store.snapshot().papers.is_empty());
     assert_eq!(DEFAULT_APP_DB_PATH, "database/app-state.db");
 

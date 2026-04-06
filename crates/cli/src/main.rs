@@ -33,8 +33,8 @@ fn run(args: Vec<String>) -> Result<String, String> {
 }
 
 fn run_next_job() -> Result<String, String> {
-    let store = SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH)
-        .map_err(format_load_error)?;
+    let store =
+        SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH).map_err(format_load_error)?;
     let queued_job = store
         .first_queued_job()
         .ok_or_else(|| "No queued OCR job found.".to_string())?;
@@ -56,8 +56,8 @@ fn run_next_job() -> Result<String, String> {
 
 fn run_job(job_id: &str) -> Result<String, String> {
     let job_id = OcrJobId(job_id.to_string());
-    let store = SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH)
-        .map_err(format_load_error)?;
+    let store =
+        SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH).map_err(format_load_error)?;
     let queued_job = store
         .get_job(&job_id)
         .ok_or_else(|| format!("OCR job not found: {}", job_id.0))?;

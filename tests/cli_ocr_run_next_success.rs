@@ -52,11 +52,7 @@ fn cli_ocr_run_next_executes_a_queued_job_and_prints_success() {
 
     let reloaded = SqliteAppStateStore::open(&db_path).expect("store should reload");
     assert_eq!(
-        reloaded
-            .snapshot()
-            .expect("snapshot should load")
-            .ocr_jobs[0]
-            .status,
+        reloaded.snapshot().expect("snapshot should load").ocr_jobs[0].status,
         OcrJobStatus::Completed
     );
 }

@@ -3,7 +3,9 @@ use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use paper_immersive_reader_application::orchestration::{LocalOcrExecutor, ScriptPaddleOcrRunner};
-use paper_immersive_reader_application::persistence::{JsonAppStateStore, DEFAULT_APP_STATE_PATH};
+use paper_immersive_reader_application::persistence::{
+    SqliteAppStateStore, SqliteAppStateStoreError, DEFAULT_APP_DB_PATH,
+};
 use paper_immersive_reader_core::domain::{OcrJobId, OcrJobStatus};
 use paper_immersive_reader_core::logging;
 
@@ -31,8 +33,8 @@ fn run(args: Vec<String>) -> Result<String, String> {
 }
 
 fn run_next_job() -> Result<String, String> {
-    let store =
-        JsonAppStateStore::load_or_default(DEFAULT_APP_STATE_PATH).map_err(format_load_error)?;
+    let store = SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH)
+        .map_err(format_load_error)?;
     let queued_job = store
         .first_queued_job()
         .ok_or_else(|| "No queued OCR job found.".to_string())?;
@@ -54,8 +56,8 @@ fn run_next_job() -> Result<String, String> {
 
 fn run_job(job_id: &str) -> Result<String, String> {
     let job_id = OcrJobId(job_id.to_string());
-    let store =
-        JsonAppStateStore::load_or_default(DEFAULT_APP_STATE_PATH).map_err(format_load_error)?;
+    let store = SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH)
+        .map_err(format_load_error)?;
     let queued_job = store
         .get_job(&job_id)
         .ok_or_else(|| format!("OCR job not found: {}", job_id.0))?;
@@ -80,7 +82,7 @@ fn run_job(job_id: &str) -> Result<String, String> {
 }
 
 fn format_job_failure(
-    executor: &LocalOcrExecutor<ScriptPaddleOcrRunner, fn() -> u64>,
+    executor: &LocalOcrExecutor<SqliteAppStateStore, ScriptPaddleOcrRunner, fn() -> u64>,
     job_id: &OcrJobId,
 ) -> String {
     match executor.store().get_job(job_id) {
@@ -93,8 +95,8 @@ fn format_job_failure(
     }
 }
 
-fn format_load_error(error: std::io::Error) -> String {
-    format!("Failed to load app state from {DEFAULT_APP_STATE_PATH}: {error}")
+fn format_load_error(error: SqliteAppStateStoreError) -> String {
+    format!("Failed to load app state from {DEFAULT_APP_DB_PATH}: {error}")
 }
 
 fn current_time_ms() -> u64 {

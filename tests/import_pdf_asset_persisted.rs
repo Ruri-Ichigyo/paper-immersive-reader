@@ -9,7 +9,7 @@ fn pdf_import_persists_managed_pdf_asset_under_database_assets() {
     std::fs::create_dir_all(&temp_root).expect("temp root should exist");
     let state_path = temp_root.join("app-state.json");
 
-    let store = JsonAppStateStore::load_or_default(&state_path).expect("store should load");
+    let store = JsonAppStateStore::load_migration_input(&state_path).expect("store should load");
     let mut orchestrator = ImportOrchestrator::new_with_store(
         DefaultImportPipeline::new_for_tests_with_pdf_text("hello"),
         store,

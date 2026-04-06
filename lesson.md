@@ -75,3 +75,45 @@
 - What was tried: first considered suppressing the warning on the helper itself, then switched to making the failure-path tests create the same placeholder script layout as the success-path tests so the shared helper stayed genuinely used.
 - Final fix: kept `tests/support/cli.rs` warning-free by using `write_executable_script` in all CLI integration tests and reran formatting plus full verification.
 - Prevention: when sharing test helpers across integration-test crates, remember that usage is checked per crate; either split helpers more narrowly or ensure each imported helper is exercised in every test crate that includes it.
+
+## 2026-04-06 (SQLite persistence bootstrap alignment)
+- Symptom: the first SQLite task hit two mismatches before the store skeleton could stabilize: the approved design doc listed schema fields that no longer matched the live Rust domain, and the first `rusqlite` row-mapping attempt failed to compile on `u64` timestamp fields.
+- Root cause: the SQLite design prose had drifted from the current domain model (`order_index` / `block_hash` / `current_block_index`), and `rusqlite` reads integer columns through signed integer types rather than `u64` directly.
+- What was tried: compared the approved SQLite design doc against the current domain structs and import pipeline, confirmed with the user that the live Rust domain is authoritative for schema shape, then reran the new smoke test after adding the minimal SQLite store until the failure narrowed to the timestamp conversion boundary.
+- Final fix: aligned the SQLite schema with the current domain structs, added explicit `i64` to `u64` conversion helpers in the row mapper, and reran formatting plus full workspace verification before recording Task 1 complete.
+- Prevention: when a new persistence layer is introduced after multiple earlier milestones, re-check the latest domain structs against the newer design prose before creating schema, and treat SQLite integer conversions as explicit boundaries instead of assuming unsigned types deserialize directly.
+
+## 2026-04-06 (SQLite round-trip write surface)
+- Symptom: the first Task 2 implementation pass needed a second compile-oriented cleanup because the new `rusqlite` write helpers were binding owned `String` fields too aggressively and then hit the repo's formatting gate before milestone verification.
+- Root cause: `params!` calls against borrowed domain structs need borrowed string values like `as_str()` / `as_deref()` instead of moving owned fields, and the larger helper surface required a `rustfmt` pass before `cargo fmt --check` would go green.
+- What was tried: added the full transactional write/query surface to satisfy the round-trip test, switched SQL parameter binding to borrowed values after reviewing the ownership boundaries, and reran the focused regression plus full verification after formatting.
+- Final fix: kept the Task 2 store API transactional, normalized SQL parameter binding to borrowed values from domain structs, and ran `cargo fmt` before the final verification trio.
+- Prevention: when adding larger `rusqlite` helper surfaces, default to borrowed bindings from domain structs and run `cargo fmt` immediately before repository-wide verification to avoid a noisy final gate.
+
+## 2026-04-06 (JSON-to-SQLite migration bootstrap)
+- Symptom: the migration entrypoint had to preserve malformed legacy JSON without side effects, which meant the sequencing around JSON parsing, database creation, transactional import, and rename needed to be explicit rather than inferred.
+- Root cause: one-time migration paths are order-sensitive; creating the SQLite database before validating the legacy JSON would violate the preservation guarantee for invalid snapshots, and renaming before commit would violate the backup contract on import failure.
+- What was tried: wrote both the success-path and invalid-JSON tests first, then implemented `open_or_migrate` to prefer an existing database, parse the legacy JSON before opening SQLite for migration, import all entity sets inside one transaction, and rename only after commit.
+- Final fix: `SqliteAppStateStore::open_or_migrate` now loads legacy JSON first, imports papers/blocks/progress/jobs/results transactionally into a fresh SQLite store, and renames the source file to `.migrated.json` only after the import commits successfully.
+- Prevention: for one-shot migrations, lock in both the happy path and malformed-input path with tests before coding, and sequence side effects so parse validation happens before database creation and rename happens after commit.
+
+## 2026-04-06 (Generic OCR executor store boundary)
+- Symptom: once the SQLite executor tests were added, the first implementation pass passed the focused SQLite regressions but failed full verification because the refactored generic executor leaked a private trait bound and the CLI still referenced the old two-parameter executor type.
+- Root cause: promoting `LocalOcrExecutor` from a JSON-only type to a shared store abstraction changed its public generic shape, which exposed visibility and downstream type-annotation fallout outside the focused SQLite tests.
+- What was tried: added a store trait with shared OCR execution logic for JSON and SQLite, introduced transactional SQLite claim helpers for `claim_job` and `claim_next_queued_job`, reran the focused SQLite tests, then fixed the `private_bounds` warning and updated the CLI executor type annotation before rerunning the full workspace gates.
+- Final fix: `LocalOcrExecutor` now operates over a shared store trait, SQLite claims queued work inside immediate transactions, the trait visibility matches the public executor impl, and the CLI builds against the new executor type shape.
+- Prevention: when turning a previously concrete type into a generic public abstraction, run a full workspace compile after the first focused green pass because downstream type annotations and visibility bounds often break outside the local test slice.
+
+## 2026-04-06 (CLI runtime-store contract shift)
+- Symptom: the new SQLite CLI tests correctly seeded `database/app-state.db`, but the binary still failed because it only loaded `database/app-state.json`; once the CLI was switched, the older happy-path CLI tests also had to stop asserting directly against JSON runtime state.
+- Root cause: the CLI contract was still coupled to the retired JSON default path, and some older success-path tests were written around inspecting the live JSON runtime file instead of the user-visible command behavior plus the current runtime store.
+- What was tried: wrote new SQLite-focused CLI tests for `ocr run-next`, `ocr run <job-id>`, and CLI-triggered auto-migration first, switched the CLI loader to `SqliteAppStateStore::open_or_migrate(DEFAULT_APP_DB_PATH)`, then updated the older CLI success tests to seed and inspect SQLite state instead of the deprecated JSON runtime file.
+- Final fix: the CLI now uses SQLite as its runtime source of truth, can auto-migrate a legacy JSON snapshot on first run, and the CLI integration tests all assert against the current runtime contract rather than the retired JSON default path.
+- Prevention: when a runtime backing store changes under a stable CLI surface, update both the binary entrypoint and any older integration tests that inspect internal persistence files so they verify the new runtime contract rather than stale implementation details.
+
+## 2026-04-06 (JSON migration-only public API)
+- Symptom: after the CLI and runtime store had moved to SQLite, the JSON store still exposed a public JSON-default-path constant and the older test surface still called a generic `load_or_default`, which kept advertising JSON as if it were still a runtime default.
+- Root cause: the JSON persistence layer started as the live runtime store, so its public API shape outlived the runtime migration unless it was explicitly narrowed.
+- What was tried: rewrote the JSON smoke test first so it required a migration-specific loader and asserted the public default path was the SQLite database path, then replaced remaining external JSON test setup calls with `load_migration_input`, removed the JSON default-path re-export, and dropped the now-unused fallback loader.
+- Final fix: `JsonAppStateStore` now exposes `load_migration_input` for migration-oriented setup, the public persistence module no longer exports a JSON default runtime path, and the test suite still covers legacy JSON behavior without presenting it as the runtime default.
+- Prevention: when retiring a former default backend, update the public API names and re-exports, not just the runtime call sites, so downstream callers and tests stop treating the retired backend as the canonical path.

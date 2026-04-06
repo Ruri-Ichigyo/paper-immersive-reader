@@ -21,7 +21,7 @@ fn import_orchestrator_persists_real_paper_and_queued_job_for_ocr() {
     let temp_path = std::env::temp_dir().join("paper-immersive-reader-ocr-queued.json");
     let _ = std::fs::remove_file(&temp_path);
 
-    let store = JsonAppStateStore::load_or_default(&temp_path).expect("store should load");
+    let store = JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
     let service = OcrJobService::new(
         || OcrJobId("job-1".to_string()),
         || PaperId("paper-1".to_string()),

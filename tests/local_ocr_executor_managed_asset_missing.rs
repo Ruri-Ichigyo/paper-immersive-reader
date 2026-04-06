@@ -11,7 +11,8 @@ fn run_job_fails_when_managed_pdf_asset_is_missing() {
     std::fs::create_dir_all(&temp_root).expect("temp root should exist");
     let state_path = temp_root.join("app-state.json");
 
-    let mut store = JsonAppStateStore::load_or_default(&state_path).expect("store should load");
+    let mut store =
+        JsonAppStateStore::load_migration_input(&state_path).expect("store should load");
     store.snapshot_mut().papers.push(Paper {
         id: PaperId("paper-1".to_string()),
         title: Some("scan".to_string()),

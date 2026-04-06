@@ -20,7 +20,8 @@ impl PaddleOcrRunner for SuccessRunner {
 fn run_next_job_executes_the_first_queued_job() {
     let temp_path = std::env::temp_dir().join("paper-immersive-reader-ocr-next.json");
     let _ = std::fs::remove_file(&temp_path);
-    let mut store = JsonAppStateStore::load_or_default(&temp_path).expect("store should load");
+    let mut store =
+        JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
     store.snapshot_mut().papers.push(Paper {
         id: PaperId("paper-1".to_string()),
         title: Some("scan".to_string()),

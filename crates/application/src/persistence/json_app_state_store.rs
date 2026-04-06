@@ -7,8 +7,6 @@ use paper_immersive_reader_core::domain::{
 use paper_immersive_reader_importing::{ImportResult, TextImportArtifacts};
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_APP_STATE_PATH: &str = "database/app-state.json";
-
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct AppState {
     pub papers: Vec<Paper>,
@@ -24,7 +22,7 @@ pub struct JsonAppStateStore {
 }
 
 impl JsonAppStateStore {
-    pub fn load_or_default(path: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+    pub fn load_migration_input(path: impl AsRef<Path>) -> Result<Self, std::io::Error> {
         let path = path.as_ref().to_path_buf();
 
         let snapshot = match fs::read_to_string(&path) {

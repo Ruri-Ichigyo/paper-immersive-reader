@@ -9,7 +9,7 @@ fn import_orchestrator_persists_embedded_text_import_result() {
     let temp_path = std::env::temp_dir().join("paper-immersive-reader-import-success.json");
     let _ = std::fs::remove_file(&temp_path);
 
-    let store = JsonAppStateStore::load_or_default(&temp_path).expect("store should load");
+    let store = JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
     let mut orchestrator = ImportOrchestrator::new_with_store(
         DefaultImportPipeline::new_for_tests_with_pdf_text("hello\n\nworld"),
         store,

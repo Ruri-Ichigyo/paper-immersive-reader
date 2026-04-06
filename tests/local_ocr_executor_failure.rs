@@ -12,7 +12,8 @@ fn run_job_marks_processing_runner_failure_and_persists_failed_job() {
     let job_id = OcrJobId("job-1".to_string());
     let temp_path = std::env::temp_dir().join("paper-immersive-reader-root-ocr-failure.json");
     let _ = std::fs::remove_file(&temp_path);
-    let mut store = JsonAppStateStore::load_or_default(&temp_path).expect("store should load");
+    let mut store =
+        JsonAppStateStore::load_migration_input(&temp_path).expect("store should load");
     store.snapshot_mut().papers.push(Paper {
         id: PaperId("paper-1".to_string()),
         title: Some("scan".to_string()),

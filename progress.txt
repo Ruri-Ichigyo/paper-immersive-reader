@@ -132,3 +132,59 @@ Next:
 - Updated `docs/plans/INDEX.md` to register the new `sqlite-persistence-auto-migration` topic
 Next:
 - Execute `docs/plans/2026-04-06-sqlite-persistence-auto-migration-implementation.md`
+
+2026-04-06 15:35:16 CST
+- SQLite persistence Task 1 completed: added a `rusqlite`-backed `SqliteAppStateStore` skeleton with the new default runtime path `database/app-state.db`
+- Added `tests/sqlite_app_state_store_smoke.rs` and verified schema creation plus empty queued-job lookup behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 2: add SQLite round-trip persistence operations and coverage for current persisted entities
+
+2026-04-06 15:40:32 CST
+- SQLite persistence Task 2 completed: added transactional save/query support for papers, blocks, reading progress, OCR jobs, OCR results, and full store snapshots
+- Added `tests/sqlite_app_state_store_round_trip.rs` to verify imported text, queued OCR work, and completed OCR artifacts persist across a database reopen
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 3: add JSON-to-SQLite auto-migration with success and invalid-JSON coverage
+
+2026-04-06 15:43:38 CST
+- SQLite persistence Task 3 completed: added `SqliteAppStateStore::open_or_migrate` with legacy JSON bootstrap, transactional import, and post-commit rename to `database/app-state.migrated.json`
+- Added `tests/sqlite_app_state_store_migrates_json.rs` and `tests/sqlite_app_state_store_invalid_json_preserved.rs` to lock in both the successful migration path and malformed-JSON preservation behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 4: move import orchestration to the SQLite runtime store
+
+2026-04-06 15:46:42 CST
+- SQLite persistence Task 4 completed: moved runtime PDF import orchestration onto `SqliteAppStateStore` while preserving managed asset writes under `database/assets/`
+- Added `tests/import_orchestrator_persists_ready_text_sqlite.rs` and `tests/import_orchestrator_queues_ocr_sqlite.rs` to cover both embedded-text success and OCR-queue persistence on SQLite
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 5: move the local OCR executor to the SQLite runtime store
+
+2026-04-06 15:52:40 CST
+- SQLite persistence Task 5 completed: moved `LocalOcrExecutor` to a shared store abstraction and added transactional SQLite job-claim helpers for explicit job runs and `run_next_job()`
+- Added `tests/local_ocr_executor_persisted_success_sqlite.rs`, `tests/local_ocr_executor_persisted_failure_sqlite.rs`, and `tests/local_ocr_executor_run_next_job_sqlite.rs` while keeping existing JSON executor coverage green
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 6: switch CLI default persistence to SQLite and wire CLI-triggered auto-migration
+
+2026-04-06 15:57:01 CST
+- SQLite persistence Task 6 completed: switched `crates/cli` to the default runtime database `database/app-state.db` and loaded persistence through the SQLite `open_or_migrate` entrypoint
+- Added `tests/cli_ocr_run_next_sqlite_success.rs`, `tests/cli_ocr_run_job_sqlite_success.rs`, and `tests/cli_auto_migrates_legacy_json.rs`, and updated the older CLI success-path tests to assert against SQLite runtime state
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 7: retire JSON as the runtime default and align docs plus tracking
+
+2026-04-06 16:01:16 CST
+- SQLite persistence Task 7 completed: removed the JSON default-path re-export, added `JsonAppStateStore::load_migration_input`, and routed the remaining JSON-facing tests plus SQLite bootstrap through the migration-specific loader
+- Updated `tests/json_app_state_store_smoke.rs` so the public default-path expectation points at `database/app-state.db` while JSON remains available only as migration input
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 8: run the closing regression set, update plan/index status to `Done`, and record final verification
+
+2026-04-06 16:02:47 CST
+- SQLite persistence auto-migration milestone completed: marked the implementation plan and `docs/plans/INDEX.md` entry as `Done`
+- Verified focused regressions with `cargo test --test sqlite_app_state_store_smoke -q`, `cargo test --test sqlite_app_state_store_migrates_json -q`, `cargo test --test import_orchestrator_queues_ocr_sqlite -q`, `cargo test --test local_ocr_executor_persisted_success_sqlite -q`, and `cargo test --test cli_auto_migrates_legacy_json -q`
+- Verified repository-wide checks with `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Branch handoff / integration decision

@@ -1,4 +1,4 @@
-use crate::persistence::JsonAppStateStore;
+use crate::persistence::{JsonAppStateStore, SqliteAppStateStore};
 use paper_immersive_reader_core::domain::{OcrJobId, PaperId};
 use paper_immersive_reader_importing::{ImportPipeline, ImportPipelineError, ImportRequest};
 
@@ -94,10 +94,96 @@ where
     }
 }
 
+impl<P> ImportOrchestrator<P, SqliteAppStateStore, ()>
+where
+    P: ImportPipeline,
+{
+    pub fn import(
+        &mut self,
+        request: ImportRequest,
+    ) -> Result<ImportOrchestrationResult, ImportPipelineError> {
+        let pdf_bytes = match &request {
+            ImportRequest::PdfDocument { bytes, .. } => Some(bytes.clone()),
+            _ => None,
+        };
+        let result = self.pipeline.import(request)?;
+        if let Some(bytes) = pdf_bytes {
+            self.store
+                .persist_managed_pdf_asset(&result.paper.id, &bytes)
+                .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+        }
+        self.store
+            .save_import_result(result)
+            .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+        Ok(ImportOrchestrationResult::ImportedText)
+    }
+}
+
 impl<P, JobIdFactory, PaperIdFactory, TimestampFactory>
     ImportOrchestrator<
         P,
         JsonAppStateStore,
+        crate::orchestration::OcrJobService<JobIdFactory, PaperIdFactory, TimestampFactory>,
+    >
+where
+    P: ImportPipeline,
+    JobIdFactory: FnMut() -> OcrJobId,
+    PaperIdFactory: FnMut() -> PaperId,
+    TimestampFactory: FnMut() -> u64,
+{
+    pub fn import(
+        &mut self,
+        request: ImportRequest,
+    ) -> Result<ImportOrchestrationResult, ImportPipelineError> {
+        let pdf_request = match &request {
+            ImportRequest::PdfDocument {
+                bytes,
+                title,
+                source_ref,
+            } => Some((bytes.clone(), title.clone(), source_ref.clone())),
+            _ => None,
+        };
+
+        match self.pipeline.import(request) {
+            Ok(result) => {
+                if let Some((bytes, _, _)) = pdf_request {
+                    self.store
+                        .persist_managed_pdf_asset(&result.paper.id, &bytes)
+                        .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+                }
+                self.store
+                    .save_import_result(result)
+                    .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+                Ok(ImportOrchestrationResult::ImportedText)
+            }
+            Err(ImportPipelineError::OcrRequired) => {
+                let (bytes, title, source_ref) =
+                    pdf_request.ok_or(ImportPipelineError::OcrRequired)?;
+                let paper = self
+                    .ocr_job_service
+                    .build_ready_ocr_paper(title, source_ref);
+                let job = self.ocr_job_service.build_queued_job(paper.id.clone());
+                let paper_id = paper.id.clone();
+                let job_id = job.id.clone();
+
+                self.store
+                    .persist_managed_pdf_asset(&paper.id, &bytes)
+                    .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+                self.store
+                    .save_paper_and_job(paper, job)
+                    .map_err(|_| ImportPipelineError::PersistenceFailed)?;
+
+                Ok(ImportOrchestrationResult::QueuedOcr { paper_id, job_id })
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<P, JobIdFactory, PaperIdFactory, TimestampFactory>
+    ImportOrchestrator<
+        P,
+        SqliteAppStateStore,
         crate::orchestration::OcrJobService<JobIdFactory, PaperIdFactory, TimestampFactory>,
     >
 where

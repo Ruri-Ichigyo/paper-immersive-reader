@@ -62,6 +62,7 @@ Should usually include a short top summary with fields such as:
 | ocr-enqueue-local-executor | 2026-04-03 | yes | yes | Done | OCR enqueue orchestration and local executor boundary are implemented |
 | ocr-json-persistence-local-queue | 2026-04-05 | yes | yes | Done | Application crate migration and JSON-backed OCR queue closure are implemented |
 | cli-ocr-managed-assets | 2026-04-05 | yes | yes | Done | Managed PDF assets, script-backed OCR runner, and CLI OCR commands are implemented |
+| sqlite-persistence-auto-migration | 2026-04-06 | yes | yes | Planned | SQLite becomes the runtime store and auto-migrates legacy JSON on first open |
 
 ## Maintenance Rules
 

@@ -125,3 +125,10 @@ Next:
 - Final verification remains `cargo test --workspace` before branch handoff
 Next:
 - Branch handoff / integration decision
+
+2026-04-06
+- Approved the next persistence milestone to replace JSON runtime state with SQLite at `database/app-state.db`
+- Wrote the paired design and implementation plan for automatic JSON-to-SQLite migration with backup rename to `database/app-state.migrated.json`
+- Updated `docs/plans/INDEX.md` to register the new `sqlite-persistence-auto-migration` topic
+Next:
+- Execute `docs/plans/2026-04-06-sqlite-persistence-auto-migration-implementation.md`

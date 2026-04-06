@@ -131,3 +131,31 @@
 - What was tried: audited the current plan-status table, compared it against the directory contents, attempted a `find ... -exec mv` move, and then simplified the operation after confirming every tracked topic was complete.
 - Final fix: moved all completed plan documents into `docs/plans/archive/`, added `docs/plans/archive/INDEX.md`, and rewrote `docs/plans/INDEX.md` so it now lists unfinished plans only.
 - Prevention: when plan-directory policy changes, update the governing index in the same change and prefer the simplest verifiable shell move over a more error-prone one-liner.
+
+## 2026-04-06 (web MVP replanning baseline)
+- Symptom: the repository had a Rust/Cargo implementation baseline, while `PRD.md` defined the target product as a broader web-first, local-first MVP and earlier stack docs recommended a JavaScript/TypeScript implementation path.
+- Root cause: product-scope documents and repository-governance documents were written at different times, so the desired MVP shape and the allowed build/dependency tooling had drifted apart.
+- What was tried: audited `PRD.md`, `APP_FLOW.md`, `BACKEND_STRUCTURE.md`, `TECH_STACK.md`, the current workspace state, and the active plans index; then confirmed with the user that the new plan should cover the whole remaining MVP loop using the PRD product goal as the target.
+- Final fix: wrote a new paired design and implementation plan that keeps the PRD MVP scope but resolves execution around a Cargo-native split architecture instead of introducing a second package-manager baseline.
+- Prevention: before generating new top-level plans, reconcile product-goal documents against repository governance and make the active implementation baseline explicit in the plan itself.
+
+## 2026-04-06 (parallel worktree setup sequencing)
+- Symptom: the first attempt to prepare the separate execution session failed with `No such file or directory` when `cargo build` and `cargo test` were launched for the new worktree.
+- Root cause: the dependent steps were started in parallel, so the build/test commands raced ahead of `git worktree add` and the initial file sync.
+- What was tried: checked whether the new worktree had actually been created, confirmed the branch and copied plan files were present, and then reran the setup flow sequentially inside the finished worktree directory.
+- Final fix: kept worktree creation and file sync first, then ran `cargo build` and `cargo test` sequentially in `.worktrees/web-mvp-closed-loop`.
+- Prevention: do not parallelize worktree creation with commands that require the new directory to already exist; treat worktree setup as a strictly ordered flow.
+
+## 2026-04-06 (web MVP batch-1 plan review and test shape)
+- Symptom: the approved implementation plan's first-batch tests did not map cleanly onto the current Cargo workspace: Task 1's proposed smoke test would pass without proving `crates/web-app` linkability, and Tasks 2-3 described browser-only seams under host-native `cargo test`.
+- Root cause: the plan's test prose drifted from this repository's existing integration-test pattern, which links library crates directly from the root harness, and it did not distinguish browser adapters from host-testable service seams.
+- What was tried: reviewed the active implementation plan against current workspace tests, confirmed the mismatch by comparing existing linkability tests and rerunning the proposed red phase mentally against Cargo behavior, then got user approval to preserve intent while adjusting the test surfaces.
+- Final fix: Task 1 now uses a real crate-linkability smoke test against a `web-app` library target, and Tasks 2-3 are being implemented around host-native storage/import seams inside `crates/web-app` with browser adapters kept behind those seams.
+- Prevention: when writing new Cargo integration tests for browser-oriented crates, define a host-testable library seam explicitly and avoid test patterns that only observe the root harness package metadata.
+
+## 2026-04-06 (read route storage-error boundary)
+- Symptom: the first Task 5 implementation pass compiled the new selection and annotation APIs most of the way, but `cargo test --test web_annotation_round_trip -q` failed because `ReadRouteModel` methods using `?` on storage calls could not convert `StorageError` into the route error type.
+- Root cause: `ReadRouteError` initially modeled reading-session and selection failures only, even though the route had become the boundary that directly persisted annotations and vocabulary entries.
+- What was tried: ran the focused Task 5 tests, read the compiler diagnostics, and traced every failing `?` site in `crates/web-app/src/routes/read.rs` back to the missing storage-error variant rather than to the annotation or vocabulary logic itself.
+- Final fix: added `ReadRouteError::Storage` plus the `From<StorageError>` conversion and then reran the Task 5 tests to confirm the behavioral assertions, not type plumbing, were the remaining gate.
+- Prevention: when a route or service grows from a pure state reader into a persistence owner, update its public error boundary in the same change instead of waiting for compiler feedback from downstream tests.

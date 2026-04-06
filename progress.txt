@@ -202,3 +202,52 @@ Next:
 - Confirmed there are currently no unfinished plan topics left under `docs/plans/`
 Next:
 - Add the next approved unfinished topic back under `docs/plans/` and update both indexes when it is completed
+
+2026-04-06 20:30:04 CST
+- Approved and wrote a new PRD-aligned design doc plus implementation plan for the remaining web-first, local-first MVP closed loop under `docs/plans/`
+- Registered `web-mvp-closed-loop` as the active planning topic in `docs/plans/INDEX.md` and reconciled the plan with Cargo-only repository governance
+- Captured the implementation path as a Cargo-native split architecture: Rust/WASM web app + thin Rust gateway for AI actions
+Next:
+- Execute `docs/plans/2026-04-06-web-mvp-closed-loop-implementation.md`
+
+2026-04-06 20:56:00 CST
+- Web MVP Task 1 completed: added a new `crates/web-app` workspace crate with a thin app shell, placeholder route modules, and a runnable startup script under `scripts/`
+- Adjusted the task's workspace smoke test to link the new crate library target directly so the red/green cycle verifies real workspace wiring
+- Verified `cargo test --test web_app_workspace_smoke -q`
+Next:
+- Task 2: add host-native web storage seams plus shared annotation/vocabulary domain types
+
+2026-04-06 21:03:00 CST
+- Web MVP Task 2 completed: added host-native `WebStorage` seams under `crates/web-app/src/storage/` with bundle, vocabulary, annotation, settings, PDF asset, and AI record support
+- Added shared `Annotation` and `VocabularyItem` domain types in `crates/core` so later web flows can reuse stable IDs and entity shapes
+- Verified `cargo test --test web_storage_round_trip -q` and `cargo test --test web_vocabulary_round_trip -q`
+Next:
+- Task 3: implement paste/PDF import services on top of the new storage seam
+
+2026-04-06 21:10:00 CST
+- Web MVP Task 3 completed: added `WebImportService`, paste/PDF request types, and a stub-ready `PdfTextBridge` seam behind the new local storage boundary
+- Added thin route models so import and library views can submit imports and surface stored papers plus progress without embedding business logic in route descriptors
+- Verified `cargo test --test web_import_paste_flow -q` and `cargo test --test web_import_pdf_flow -q`
+Next:
+- Gather feedback on the first batch before continuing with reading-session work
+
+2026-04-06 21:23:00 CST
+- Web MVP Task 4 completed: added `ReadingSession`, navigation helpers, and reusable progress/navigation components for block-by-block reading
+- The read route now reloads persisted progress by `paper_id` and writes updated `ReadingProgress` back to storage on previous/next navigation
+- Verified `cargo test --test web_block_navigation -q` and `cargo test --test web_reading_progress_restore -q`
+Next:
+- Task 5: add selection annotations and vocabulary auto-collection on top of the reading session
+
+2026-04-06 21:32:00 CST
+- Web MVP Task 5 completed: added selection state, text-anchor construction, annotation rendering, and vocabulary route listing on top of the reading route
+- Successful lookup events now upsert local vocabulary entries, and saved highlights persist quote/prefix/suffix plus offsets for the same paper/block pair
+- Verified `cargo test --test web_annotation_round_trip -q` and `cargo test --test web_vocabulary_auto_collect -q`
+Next:
+- Task 6: expand the gateway into the MVP AI service boundary
+
+2026-04-06 21:46:00 CST
+- Web MVP Task 6 completed: expanded `crates/gateway` into a testable Axum library/binary split with translate/explain routes, config loading, and a structured logging bootstrap under `logs/YYYY-MM-DD_HHMMSS.log`
+- Added gateway contract coverage with injected AI client seams, documented runtime environment variables under `docs/runtime-config.md`, and added `scripts/run_gateway.sh`
+- Verified `cargo test --test gateway_translate_contract -q` and `cargo test --test gateway_explain_contract -q`
+Next:
+- Gather feedback on the second batch before wiring the web reader to the gateway AI boundary

@@ -10,6 +10,7 @@ members = [
   "crates/gateway",
   "crates/cli",
   "crates/importing",
+  "crates/web-app",
 ]
 resolver = "2"
 
@@ -19,6 +20,14 @@ paper-immersive-reader-core = { path = "crates/core" }
 paper-immersive-reader-importing = { path = "crates/importing" }
 
 [dev-dependencies]
+async-trait = "0.1"
+axum = "0.8"
+http-body-util = "0.1"
 paper-immersive-reader-application = { path = "crates/application" }
 paper-immersive-reader-core = { path = "crates/core" }
+paper-immersive-reader-gateway = { path = "crates/gateway" }
 paper-immersive-reader-importing = { path = "crates/importing" }
+paper-immersive-reader-web-app = { path = "crates/web-app" }
+serde_json = "1.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = { version = "0.5", features = ["util"] }

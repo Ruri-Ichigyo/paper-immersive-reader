@@ -54,11 +54,9 @@ Should usually include a short top summary with fields such as:
 
 ## Current Active Topics
 
-No unfinished plans are currently tracked in `docs/plans/`.
-
 | Topic | Date | Design | Implementation | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| _None_ | - | - | - | - | All completed topics were archived on 2026-04-06. |
+| `web-mvp-closed-loop` | 2026-04-06 | [`2026-04-06-web-mvp-closed-loop-design.md`](./2026-04-06-web-mvp-closed-loop-design.md) | [`2026-04-06-web-mvp-closed-loop-implementation.md`](./2026-04-06-web-mvp-closed-loop-implementation.md) | `Approved` / `Planned` | Cargo-native web-first MVP plan that reconciles PRD scope with repository governance. |
 
 ## Archive Summary
 

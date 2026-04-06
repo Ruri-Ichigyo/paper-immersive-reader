@@ -1,0 +1,16 @@
+[package]
+name = "paper-immersive-reader-web-app"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "paper-immersive-reader-web-app"
+path = "src/main.rs"
+
+[dependencies]
+paper-immersive-reader-core = { path = "../core" }
+paper-immersive-reader-importing = { path = "../importing" }
+serde = { version = "1.0", features = ["derive"] }

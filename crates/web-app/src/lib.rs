@@ -1,5 +1,7 @@
 pub mod app;
+pub mod components;
 pub mod import;
+pub mod reading;
 pub mod routes;
 pub mod storage;
 

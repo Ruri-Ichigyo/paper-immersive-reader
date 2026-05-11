@@ -8,6 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 paper-immersive-reader-core = { path = "../core" }
+paper-immersive-reader-importing = { path = "../importing" }
 leptos = { version = "0.7", features = ["csr"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement"] }

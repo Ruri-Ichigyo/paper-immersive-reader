@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod annotations;
 pub mod app;
 pub mod components;

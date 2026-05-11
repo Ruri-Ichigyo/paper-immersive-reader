@@ -23,4 +23,9 @@ paper-immersive-reader-importing = { path = "crates/importing" }
 paper-immersive-reader-application = { path = "crates/application" }
 paper-immersive-reader-core = { path = "crates/core" }
 paper-immersive-reader-importing = { path = "crates/importing" }
+paper-immersive-reader-gateway = { path = "crates/gateway" }
 paper-immersive-reader-web-app = { path = "crates/web-app" }
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+serde_json = "1.0"
+reqwest = { version = "0.12", features = ["json"] }

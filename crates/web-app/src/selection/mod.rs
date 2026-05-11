@@ -19,7 +19,10 @@ pub enum SelectionAction {
 }
 
 /// Compute prefix and suffix context around a selection within the full block text.
-pub fn compute_anchors(block_text: &str, selection: &TextSelection) -> (Option<String>, Option<String>) {
+pub fn compute_anchors(
+    block_text: &str,
+    selection: &TextSelection,
+) -> (Option<String>, Option<String>) {
     let chars: Vec<char> = block_text.chars().collect();
     let start = selection.start_offset as usize;
     let end = selection.end_offset as usize;

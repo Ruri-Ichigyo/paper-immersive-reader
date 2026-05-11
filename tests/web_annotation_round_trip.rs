@@ -1,6 +1,4 @@
-use paper_immersive_reader_core::domain::{
-    AnchoringStatus, AnnotationType, BlockId, PaperId,
-};
+use paper_immersive_reader_core::domain::{AnchoringStatus, AnnotationType, BlockId, PaperId};
 use paper_immersive_reader_web_app::annotations::{
     create_annotation, save_and_reload_annotation, AnnotationInput,
 };

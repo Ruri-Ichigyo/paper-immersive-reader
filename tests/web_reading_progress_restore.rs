@@ -1,6 +1,4 @@
-use paper_immersive_reader_core::domain::{
-    Block, BlockId, PaperId, ReadingProgress,
-};
+use paper_immersive_reader_core::domain::{Block, BlockId, PaperId, ReadingProgress};
 use paper_immersive_reader_web_app::reading::session::ReadingSession;
 use paper_immersive_reader_web_app::storage::memory_store::InMemoryStore;
 use paper_immersive_reader_web_app::storage::AppStorage;

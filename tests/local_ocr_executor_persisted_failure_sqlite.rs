@@ -17,7 +17,7 @@ impl PaddleOcrRunner for FailingRunner {
 }
 
 #[test]
-fn run_job_persists_failed_job_and_keeps_paper_ready_ocr_in_sqlite() {
+fn run_job_persists_failed_job_details_and_reloads_from_sqlite() {
     let temp_root = std::env::temp_dir().join("paper-immersive-reader-ocr-failure-sqlite");
     let _ = std::fs::remove_dir_all(&temp_root);
     let db_path = temp_root.join("database").join("app-state.db");
@@ -52,10 +52,18 @@ fn run_job_persists_failed_job_and_keeps_paper_ready_ocr_in_sqlite() {
     let result = executor.run_job(&OcrJobId("job-1".to_string()));
 
     assert!(result.is_none());
-    let snapshot = executor.store().snapshot().expect("snapshot should load");
+
+    let reloaded = SqliteAppStateStore::open(&db_path).expect("store should reload");
+    let snapshot = reloaded.snapshot().expect("snapshot should load");
     assert_eq!(snapshot.ocr_job_results.len(), 0);
     assert_eq!(snapshot.blocks.len(), 0);
     assert_eq!(snapshot.reading_progress.len(), 0);
     assert_eq!(snapshot.papers[0].status, PaperStatus::ReadyOcr);
     assert_eq!(snapshot.ocr_jobs[0].status, OcrJobStatus::Failed);
+    assert_eq!(snapshot.ocr_jobs[0].started_at_ms, Some(200));
+    assert_eq!(snapshot.ocr_jobs[0].finished_at_ms, Some(200));
+    assert_eq!(
+        snapshot.ocr_jobs[0].error_message.as_deref(),
+        Some("ocr failed")
+    );
 }

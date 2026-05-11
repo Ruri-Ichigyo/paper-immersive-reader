@@ -16,9 +16,7 @@ pub struct StubPdfBridge {
 
 impl StubPdfBridge {
     pub fn with_text(text: &'static str) -> Self {
-        Self {
-            text: Some(text),
-        }
+        Self { text: Some(text) }
     }
 
     pub fn failing() -> Self {

@@ -35,10 +35,7 @@ pub trait AppStorage {
     // Annotations
     fn save_annotation(&mut self, annotation: &Annotation) -> Result<(), StorageError>;
     fn load_annotations(&self, paper_id: &PaperId) -> Result<Vec<Annotation>, StorageError>;
-    fn load_annotation(
-        &self,
-        id: &AnnotationId,
-    ) -> Result<Option<Annotation>, StorageError>;
+    fn load_annotation(&self, id: &AnnotationId) -> Result<Option<Annotation>, StorageError>;
 
     // Vocabulary
     fn upsert_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError>;

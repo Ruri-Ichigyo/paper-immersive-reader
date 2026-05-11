@@ -53,7 +53,8 @@ async fn translate_handler<A: AiClient>(
 
 fn extract_single_word(text: &str) -> Option<String> {
     let trimmed = text.trim();
-    if trimmed.split_whitespace().count() == 1 && trimmed.chars().all(|c| c.is_alphabetic() || c == '-')
+    if trimmed.split_whitespace().count() == 1
+        && trimmed.chars().all(|c| c.is_alphabetic() || c == '-')
     {
         Some(trimmed.to_lowercase())
     } else {

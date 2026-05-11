@@ -2,9 +2,7 @@ use paper_immersive_reader_core::domain::{
     Block, BlockId, Paper, PaperId, PaperSourceType, PaperStatus, ReadingProgress,
 };
 use paper_immersive_reader_web_app::storage::{
-    memory_store::InMemoryStore,
-    schema::StoredPaper,
-    AppStorage,
+    memory_store::InMemoryStore, schema::StoredPaper, AppStorage,
 };
 
 fn current_time_ms() -> u64 {
@@ -80,7 +78,10 @@ fn paper_block_progress_round_trip_through_in_memory_store() {
     let loaded_progress = store.load_progress(&paper_id).unwrap().unwrap();
     assert_eq!(loaded_progress.current_block_index, 1);
     assert_eq!(
-        loaded_progress.current_block_id.as_ref().map(|b| b.0.as_str()),
+        loaded_progress
+            .current_block_id
+            .as_ref()
+            .map(|b| b.0.as_str()),
         Some("b-2")
     );
 

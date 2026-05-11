@@ -28,7 +28,10 @@ async fn explain_term_endpoint_returns_structured_response() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert!(body["explanation"].is_string(), "explanation must be present");
+    assert!(
+        body["explanation"].is_string(),
+        "explanation must be present"
+    );
     assert!(
         body["background"].is_string() || body["background"].is_null(),
         "background is optional"
@@ -65,5 +68,8 @@ async fn explain_sentence_endpoint_includes_caution() {
 
     let body: serde_json::Value = resp.json().await.unwrap();
     assert!(body["explanation"].is_string());
-    assert!(body["caution"].is_string(), "sentence explanation should have caution");
+    assert!(
+        body["caution"].is_string(),
+        "sentence explanation should have caution"
+    );
 }

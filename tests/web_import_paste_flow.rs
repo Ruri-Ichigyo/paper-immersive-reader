@@ -9,7 +9,9 @@ fn paste_import_creates_paper_blocks_and_progress() {
     let mut service = WebImportService::new(store);
 
     let text = "First paragraph of the paper.\n\nSecond paragraph with more content.\n\nThird paragraph here.";
-    let paper = service.import_paste(text.to_string(), Some("Test Paper".to_string())).unwrap();
+    let paper = service
+        .import_paste(text.to_string(), Some("Test Paper".to_string()))
+        .unwrap();
 
     assert_eq!(paper.title.as_deref(), Some("Test Paper"));
     assert_eq!(paper.source_type, PaperSourceType::Paste);

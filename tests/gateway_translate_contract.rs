@@ -28,7 +28,10 @@ async fn translate_endpoint_returns_structured_response() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert!(body["translation"].is_string(), "translation must be present");
+    assert!(
+        body["translation"].is_string(),
+        "translation must be present"
+    );
     assert_eq!(body["source_text"], "epistemology");
     assert_eq!(body["target_language"], "zh");
     assert!(

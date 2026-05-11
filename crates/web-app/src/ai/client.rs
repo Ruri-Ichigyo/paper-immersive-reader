@@ -62,7 +62,9 @@ impl<S: AppStorage> WebAiClient<S> {
             AiRequestType::Translate {
                 target_language, ..
             } => ("translate", target_language.clone(), "translate"),
-            AiRequestType::ExplainTerm { language } => ("explain_term", language.clone(), "explain_term"),
+            AiRequestType::ExplainTerm { language } => {
+                ("explain_term", language.clone(), "explain_term")
+            }
             AiRequestType::ExplainSentence { language } => {
                 ("explain_sentence", language.clone(), "explain_sentence")
             }
@@ -115,7 +117,11 @@ impl<S: AppStorage> WebAiClient<S> {
         let record = AiRecord {
             id: format!(
                 "ai-{}",
-                uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("0")
+                uuid::Uuid::new_v4()
+                    .to_string()
+                    .split('-')
+                    .next()
+                    .unwrap_or("0")
             ),
             paper_id: ctx.paper_id.clone(),
             block_id: ctx.block_id.clone(),

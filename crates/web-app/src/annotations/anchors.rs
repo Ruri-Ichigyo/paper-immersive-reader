@@ -2,7 +2,10 @@ use crate::selection::TextSelection;
 
 /// Compute prefix (up to 50 chars before) and suffix (up to 50 chars after)
 /// for resilient re-anchoring of annotations.
-pub fn compute_anchors(block_text: &str, selection: &TextSelection) -> (Option<String>, Option<String>) {
+pub fn compute_anchors(
+    block_text: &str,
+    selection: &TextSelection,
+) -> (Option<String>, Option<String>) {
     let chars: Vec<char> = block_text.chars().collect();
     let start = selection.start_offset as usize;
     let end = selection.end_offset as usize;

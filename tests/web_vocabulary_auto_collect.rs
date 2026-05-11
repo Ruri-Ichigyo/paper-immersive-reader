@@ -50,8 +50,15 @@ fn lookup_auto_collects_and_merges_vocabulary() {
     assert_eq!(entries.len(), 1, "should merge duplicate terms");
     assert_eq!(entries[0].term, "hermeneutics");
     assert_eq!(entries[0].lookup_count, 2);
-    assert_eq!(entries[0].paper_id_first_seen, paper_id, "first-seen paper preserved");
-    assert_eq!(entries[0].last_seen_at_ms, now + 5000, "last-seen time updated");
+    assert_eq!(
+        entries[0].paper_id_first_seen, paper_id,
+        "first-seen paper preserved"
+    );
+    assert_eq!(
+        entries[0].last_seen_at_ms,
+        now + 5000,
+        "last-seen time updated"
+    );
     assert_eq!(
         entries[0].note.as_deref(),
         Some("theory of interpretation"),
@@ -84,5 +91,8 @@ fn vocabulary_list_shows_all_collected_terms() {
     assert_eq!(entries.len(), 3);
     let mut terms_found: Vec<String> = entries.iter().map(|e| e.term.clone()).collect();
     terms_found.sort();
-    assert_eq!(terms_found, vec!["epistemology", "ontology", "phenomenology"]);
+    assert_eq!(
+        terms_found,
+        vec!["epistemology", "ontology", "phenomenology"]
+    );
 }

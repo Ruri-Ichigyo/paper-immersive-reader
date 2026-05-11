@@ -37,8 +37,7 @@ fn pdf_import_fails_when_extraction_produces_no_text() {
     let mut service = WebImportService::new(store);
 
     let extractor = StubPdfBridge::failing();
-    let result =
-        service.import_pdf(b"%PDF-1.4 empty".to_vec(), None, &extractor);
+    let result = service.import_pdf(b"%PDF-1.4 empty".to_vec(), None, &extractor);
 
     assert!(result.is_err());
 }

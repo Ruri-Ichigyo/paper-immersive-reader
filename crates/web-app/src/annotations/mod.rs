@@ -33,7 +33,11 @@ pub fn create_annotation(
     Annotation {
         id: AnnotationId(format!(
             "ann-{}",
-            uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("0")
+            uuid::Uuid::new_v4()
+                .to_string()
+                .split('-')
+                .next()
+                .unwrap_or("0")
         )),
         paper_id,
         block_id,

@@ -48,7 +48,10 @@ impl AiClient for StubAiClient {
         _context: Option<&str>,
     ) -> Pin<Box<dyn Future<Output = ExplainResult> + Send + '_>> {
         let result = ExplainResult {
-            explanation: format!("[{} explanation of '{}' in {}]", explanation_type, text, language),
+            explanation: format!(
+                "[{} explanation of '{}' in {}]",
+                explanation_type, text, language
+            ),
             background: Some("Additional context would appear here.".to_string()),
             caution: if explanation_type == "sentence" {
                 Some("This interpretation may vary by discipline.".to_string())

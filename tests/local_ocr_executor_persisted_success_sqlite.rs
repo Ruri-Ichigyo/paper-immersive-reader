@@ -21,7 +21,7 @@ impl PaddleOcrRunner for SuccessRunner {
 }
 
 #[test]
-fn run_job_persists_completed_job_result_blocks_progress_and_ready_text_paper_in_sqlite() {
+fn run_job_persists_completed_job_transition_details_and_reloads_from_sqlite() {
     let temp_root = std::env::temp_dir().join("paper-immersive-reader-ocr-success-sqlite");
     let _ = std::fs::remove_dir_all(&temp_root);
     let db_path = temp_root.join("database").join("app-state.db");
@@ -58,10 +58,21 @@ fn run_job_persists_completed_job_result_blocks_progress_and_ready_text_paper_in
         .expect("job should complete");
 
     assert_eq!(completed.status, OcrJobStatus::Completed);
-    let snapshot = executor.store().snapshot().expect("snapshot should load");
+    assert_eq!(completed.started_at_ms, Some(200));
+    assert_eq!(completed.finished_at_ms, Some(200));
+    assert_eq!(completed.error_message, None);
+
+    let reloaded = SqliteAppStateStore::open(&db_path).expect("store should reload");
+    let snapshot = reloaded.snapshot().expect("snapshot should load");
     assert_eq!(snapshot.ocr_job_results.len(), 1);
+    assert_eq!(snapshot.ocr_job_results[0].text, "first\n\nsecond");
     assert_eq!(snapshot.blocks.len(), 2);
+    assert_eq!(snapshot.blocks[0].text, "first");
+    assert_eq!(snapshot.blocks[1].text, "second");
     assert_eq!(snapshot.reading_progress.len(), 1);
     assert_eq!(snapshot.papers[0].status, PaperStatus::ReadyText);
     assert_eq!(snapshot.ocr_jobs[0].status, OcrJobStatus::Completed);
+    assert_eq!(snapshot.ocr_jobs[0].started_at_ms, Some(200));
+    assert_eq!(snapshot.ocr_jobs[0].finished_at_ms, Some(200));
+    assert_eq!(snapshot.ocr_jobs[0].error_message, None);
 }

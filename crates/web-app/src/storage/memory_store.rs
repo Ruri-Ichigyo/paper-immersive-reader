@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use paper_immersive_reader_core::domain::{
-    Annotation, AnnotationId, Block, PaperId, PaperStatus, ReadingProgress,
-    VocabularyItem,
+    Annotation, AnnotationId, Block, PaperId, PaperStatus, ReadingProgress, VocabularyItem,
 };
 
 use super::schema::{AiRecord, Settings, StoredPaper};
@@ -27,8 +26,7 @@ impl InMemoryStore {
 
 impl AppStorage for InMemoryStore {
     fn save_paper(&mut self, paper: &StoredPaper) -> Result<(), StorageError> {
-        self.papers
-            .insert(paper.paper.id.0.clone(), paper.clone());
+        self.papers.insert(paper.paper.id.0.clone(), paper.clone());
         Ok(())
     }
 
@@ -40,7 +38,11 @@ impl AppStorage for InMemoryStore {
         Ok(self.papers.values().cloned().collect())
     }
 
-    fn update_paper_status(&mut self, id: &PaperId, status: PaperStatus) -> Result<(), StorageError> {
+    fn update_paper_status(
+        &mut self,
+        id: &PaperId,
+        status: PaperStatus,
+    ) -> Result<(), StorageError> {
         match self.papers.get_mut(&id.0) {
             Some(stored) => {
                 stored.paper.status = status;
@@ -84,13 +86,14 @@ impl AppStorage for InMemoryStore {
     }
 
     fn load_annotations(&self, paper_id: &PaperId) -> Result<Vec<Annotation>, StorageError> {
-        Ok(self.annotations.get(&paper_id.0).cloned().unwrap_or_default())
+        Ok(self
+            .annotations
+            .get(&paper_id.0)
+            .cloned()
+            .unwrap_or_default())
     }
 
-    fn load_annotation(
-        &self,
-        id: &AnnotationId,
-    ) -> Result<Option<Annotation>, StorageError> {
+    fn load_annotation(&self, id: &AnnotationId) -> Result<Option<Annotation>, StorageError> {
         for list in self.annotations.values() {
             for a in list {
                 if a.id == *id {
@@ -129,7 +132,11 @@ impl AppStorage for InMemoryStore {
     }
 
     fn load_ai_records(&self, paper_id: &PaperId) -> Result<Vec<AiRecord>, StorageError> {
-        Ok(self.ai_records.get(&paper_id.0).cloned().unwrap_or_default())
+        Ok(self
+            .ai_records
+            .get(&paper_id.0)
+            .cloned()
+            .unwrap_or_default())
     }
 
     fn save_settings(&mut self, settings: &Settings) -> Result<(), StorageError> {

@@ -48,7 +48,10 @@ fn vocabulary_upsert_increments_lookup_count() {
     let entries = store.list_vocabulary().unwrap();
     assert_eq!(entries.len(), 1, "term should not be duplicated");
     assert_eq!(entries[0].term, "epistemology");
-    assert_eq!(entries[0].lookup_count, 2, "lookup_count should be incremented");
+    assert_eq!(
+        entries[0].lookup_count, 2,
+        "lookup_count should be incremented"
+    );
     assert_eq!(
         entries[0].paper_id_first_seen, paper_id,
         "should keep first-seen paper"

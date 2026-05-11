@@ -29,7 +29,9 @@ fn navigation_updates_stored_block_index() {
     assert_eq!(session.current_index(), 0);
 
     // Navigate next
-    let moved = session.navigate(NavigationAction::Next, &mut store).unwrap();
+    let moved = session
+        .navigate(NavigationAction::Next, &mut store)
+        .unwrap();
     assert!(moved);
     assert_eq!(session.current_index(), 1);
 
@@ -38,7 +40,9 @@ fn navigation_updates_stored_block_index() {
     assert_eq!(progress.current_block_index, 1);
 
     // Navigate back
-    let moved = session.navigate(NavigationAction::Previous, &mut store).unwrap();
+    let moved = session
+        .navigate(NavigationAction::Previous, &mut store)
+        .unwrap();
     assert!(moved);
     assert_eq!(session.current_index(), 0);
 }
@@ -72,9 +76,13 @@ fn navigation_at_boundaries_returns_false() {
     assert_eq!(session.current_index(), 0);
 
     // Go to last block, try next
-    session.navigate(NavigationAction::Next, &mut store).unwrap();
+    session
+        .navigate(NavigationAction::Next, &mut store)
+        .unwrap();
     assert_eq!(session.current_index(), 1);
-    let moved = session.navigate(NavigationAction::Next, &mut store).unwrap();
+    let moved = session
+        .navigate(NavigationAction::Next, &mut store)
+        .unwrap();
     assert!(!moved, "should not move past last block");
     assert_eq!(session.current_index(), 1);
 }

@@ -15,15 +15,10 @@ pub fn init_logging() -> WorkerGuard {
     // Format: logs/YYYY-MM-DD_HHMMSS.log
     let dt = chrono_lite(&now);
     let filename = format!("{}.log", dt);
-    let file_appender = tracing_appender::rolling::RollingFileAppender::builder()
-        .rotation(tracing_appender::rolling::Rotation::NEVER)
-        .filename_prefix("")
-        .filename_suffix("")
-        .max_log_files(1)
-        .build(log_dir.join(filename))
-        .expect("failed to create log file appender");
+    let file = fs::File::create(log_dir.join(filename))
+        .expect("failed to create log file");
 
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    let (non_blocking, guard) = tracing_appender::non_blocking(file);
 
     tracing_subscriber::fmt()
         .with_env_filter(

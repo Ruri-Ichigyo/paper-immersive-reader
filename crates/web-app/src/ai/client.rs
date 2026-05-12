@@ -220,19 +220,13 @@ impl GatewayAiClient {
             "target_language": target_language,
             "context": context,
         });
-        let mut opts = gloo_net::http::RequestOptions::default();
-        opts.method = gloo_net::http::Method::POST;
-        opts.headers = std::collections::HashMap::from([(
-            "Content-Type".to_string(),
-            "application/json".to_string(),
-        )]);
-        opts.body = Some(serde_json::to_string(&body).unwrap_or_default().into());
 
-        let resp =
-            gloo_net::http::Request::new(&format!("{}/api/translate", self.gateway_url), opts)
-                .send()
-                .await
-                .map_err(|e| e.to_string())?;
+        let resp = gloo_net::http::Request::post(&format!("{}/api/translate", self.gateway_url))
+            .json(&body)
+            .map_err(|e| e.to_string())?
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
         json["translation"]
@@ -255,15 +249,10 @@ impl GatewayAiClient {
             "language": language,
             "context": context,
         });
-        let mut opts = gloo_net::http::RequestOptions::default();
-        opts.method = gloo_net::http::Method::POST;
-        opts.headers = std::collections::HashMap::from([(
-            "Content-Type".to_string(),
-            "application/json".to_string(),
-        )]);
-        opts.body = Some(serde_json::to_string(&body).unwrap_or_default().into());
 
-        let resp = gloo_net::http::Request::new(&format!("{}/api/explain", self.gateway_url), opts)
+        let resp = gloo_net::http::Request::post(&format!("{}/api/explain", self.gateway_url))
+            .json(&body)
+            .map_err(|e| e.to_string())?
             .send()
             .await
             .map_err(|e| e.to_string())?;

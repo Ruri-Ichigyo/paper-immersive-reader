@@ -3,7 +3,6 @@ pub mod pdf_bridge;
 use paper_immersive_reader_core::domain::{
     Block, BlockId, Paper, PaperId, PaperSourceType, PaperStatus, ReadingProgress,
 };
-use paper_immersive_reader_importing::ImportPipelineError;
 
 use crate::storage::schema::StoredPaper;
 use crate::storage::AppStorage;
@@ -15,14 +14,20 @@ pub enum WebImportError {
     StorageFailed,
 }
 
-impl From<ImportPipelineError> for WebImportError {
-    fn from(err: ImportPipelineError) -> Self {
-        match err {
-            ImportPipelineError::EmptyInput | ImportPipelineError::NoBlocksProduced => {
-                WebImportError::EmptyInput
+#[cfg(not(target_arch = "wasm32"))]
+mod native_import_bridge {
+    use super::WebImportError;
+    use paper_immersive_reader_importing::ImportPipelineError;
+
+    impl From<ImportPipelineError> for WebImportError {
+        fn from(err: ImportPipelineError) -> Self {
+            match err {
+                ImportPipelineError::EmptyInput | ImportPipelineError::NoBlocksProduced => {
+                    WebImportError::EmptyInput
+                }
+                ImportPipelineError::OcrRequired => WebImportError::ExtractionFailed,
+                _ => WebImportError::ExtractionFailed,
             }
-            ImportPipelineError::OcrRequired => WebImportError::ExtractionFailed,
-            _ => WebImportError::ExtractionFailed,
         }
     }
 }

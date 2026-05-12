@@ -1,0 +1,234 @@
+2026-03-28
+- Milestone M0 completed: root Cargo workspace scaffolded with core/gateway/cli crates
+- Added integration smoke tests for workspace, core, and logging path behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+- Milestone M1.1 completed: added core domain models for Paper, Block, and ReadingProgress
+- Added integration tests covering domain exports, paper construction, block validation, and reading progress
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Milestone M1.2: added importing crate + minimal runnable paste-text import pipeline
+- Added integration tests for importing crate linkability, types, paste import happy path, segmentation, and empty-input error
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Extend import pipeline beyond paste: PDF/text extraction skeleton + lifecycle state machine wiring
+- Replace placeholder logging path generation with timestamped file bootstrap via tracing
+
+2026-03-31
+- Milestone M1.3 completed: added PDF import request support and a minimal PDF extraction seam in `crates/importing`
+- Added integration tests for PDF import happy path, OCR-required boundary, and extractor failure mapping
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Replace deterministic PDF extractor fakes with a real embedded-text extraction implementation
+- Add richer OCR-boundary reasons and decide how OCR work is queued or invoked
+
+2026-04-02
+- Milestone M1.4 completed: replaced the fake PDF extractor with a real embedded-text extraction path in `crates/importing`
+- Added real PDF fixtures and integration tests for embedded-text happy path and no-usable-text OCR boundary behavior
+- Kept seam-level PDF tests for injected extractor behavior and typed failure coverage
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Evaluate richer OCR-boundary reasons without changing the simple import API
+- Decide whether real OCR work should be modeled as queued jobs, synchronous fallback, or separate pipeline stages
+
+2026-04-02
+- Milestone M1.5 completed: added OCR job domain types in `crates/core` with explicit `OcrEngine::PaddleOcr`
+- Added validated OCR job lifecycle transitions, OCR job result type, and minimal repository interface shape
+- Added focused tests for exports, construction, results, transitions, and repository trait implementability
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Connect OCR job creation to the `OcrRequired` import boundary without coupling import to execution
+- Design or implement the local async executor that claims queued PaddleOCR jobs and records results
+
+2026-04-03
+- Milestone M1.6 completed: added OCR enqueue orchestration and a minimal local executor boundary
+- Added orchestrator coverage for imported-text success and queue-on-`OcrRequired` behavior
+- Added local executor success, failure, and invalid-state tests plus a PaddleOCR runner boundary
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Persist OCR enqueue/execution state outside in-memory test repos
+- Decide whether executor triggering should be explicit-only or also support background polling in a later milestone
+
+2026-04-05
+- Completed the remaining `docs/plans` governance follow-through by marking implemented milestones as `Done`
+- Normalized missing `Status` / `Date` headers on later implementation plans and expanded `docs/plans/INDEX.md` to cover all current topics
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Keep `docs/plans/INDEX.md` and matching `*-implementation.md` statuses updated in the same change whenever a new milestone lands
+
+2026-04-05
+- Approved a new OCR persistence milestone and wrote the paired design + implementation plan under `docs/plans/`
+- Defined the next execution scope as `crates/application` migration plus JSON-backed OCR queue persistence in `database/app-state.json`
+- Updated `docs/plans/INDEX.md` to register the new planned topic
+Next:
+- Execute `docs/plans/2026-04-05-ocr-json-persistence-local-queue-implementation.md`
+
+2026-04-05
+- Milestone M1.7 completed: migrated orchestration into `crates/application` and kept the root crate as thin glue only
+- Added JSON-backed app state persistence in `database/app-state.json` for papers, blocks, reading progress, OCR jobs, and OCR results
+- Closed the OCR loop so `OcrRequired` now persists a real `Paper`, queued jobs can be consumed by `run_next_job()`, and successful OCR writes back readable artifacts
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Decide whether the next milestone should expose this persisted OCR workflow through CLI/gateway entrypoints or add a more robust storage engine
+
+2026-04-05
+- Approved a new CLI milestone and wrote the paired design + implementation plan for managed PDF assets plus script-backed OCR execution
+- Scoped the CLI surface to `ocr run-next` and `ocr run <job-id>` with fixed default state path `database/app-state.json`
+- Updated `docs/plans/INDEX.md` to register the new planned topic
+Next:
+- Execute `docs/plans/2026-04-05-cli-ocr-managed-assets-implementation.md`
+
+2026-04-05 12:11:21 CST
+- CLI OCR managed-assets Task 1 completed: PDF imports now persist managed assets under `assets/<paper-id>.pdf` relative to the app-state file
+- Added `tests/import_pdf_asset_persisted.rs` and verified `cargo test --test import_pdf_asset_persisted -q`
+- Rechecked queued-OCR persistence with `cargo test --test import_orchestrator_queues_ocr_persisted -q`
+Next:
+- Task 2: add the script-backed PaddleOCR runner
+
+2026-04-05 12:11:21 CST
+- CLI OCR managed-assets Task 2 completed: added `ScriptPaddleOcrRunner` and the placeholder adapter script at `scripts/run_paddle_ocr.sh`
+- Added success and failure coverage in `tests/paddle_ocr_script_runner_success.rs` and `tests/paddle_ocr_script_runner_failure.rs`
+- Verified `cargo test --test paddle_ocr_script_runner_success -q` and `cargo test --test paddle_ocr_script_runner_failure -q`
+Next:
+- Task 3: wire the local OCR executor to managed asset resolution
+
+2026-04-05 12:11:21 CST
+- CLI OCR managed-assets Task 3 completed: `LocalOcrExecutor` now resolves managed PDF asset paths from the JSON store before invoking the runner
+- Added `tests/local_ocr_executor_managed_asset_missing.rs` and kept existing executor regressions green after the runner API update
+- Verified `cargo test --test local_ocr_executor_managed_asset_missing -q`, `cargo test --test local_ocr_executor_success -q`, `cargo test --test local_ocr_executor_failure -q`, `cargo test --test local_ocr_executor_invalid_state -q`, `cargo test --test local_ocr_executor_run_next_job -q`, `cargo test --test local_ocr_executor_persisted_success -q`, and `cargo test --test local_ocr_executor_persisted_failure -q`
+Next:
+- Task 4: add CLI `ocr run-next`
+
+2026-04-05 12:33:50 CST
+- CLI OCR managed-assets Task 4 completed: `crates/cli` now supports `ocr run-next` against the fixed default state file `database/app-state.json`
+- Added subprocess integration coverage in `tests/cli_ocr_run_next_success.rs` and `tests/cli_ocr_run_next_no_jobs.rs`
+- Verified `cargo test --test cli_ocr_run_next_success -q` and `cargo test --test cli_ocr_run_next_no_jobs -q`
+Next:
+- Task 5: add CLI `ocr run <job-id>`
+
+2026-04-05 12:33:50 CST
+- CLI OCR managed-assets Task 5 completed: `crates/cli` now supports `ocr run <job-id>` and reports missing jobs with a non-zero exit
+- Added subprocess integration coverage in `tests/cli_ocr_run_job_success.rs` and `tests/cli_ocr_run_job_missing.rs`
+- Verified `cargo test --test cli_ocr_run_job_success -q` and `cargo test --test cli_ocr_run_job_missing -q`
+Next:
+- Task 6: run regressions and full verification
+
+2026-04-05 12:33:50 CST
+- CLI OCR managed-assets Task 6 completed: focused regressions, formatting, clippy, and full workspace tests all pass after the CLI additions
+- Verified `cargo test --test import_orchestrator_queues_ocr_persisted -q`, `cargo test --test local_ocr_executor_persisted_success -q`, `cargo test --test import_pdf_real_text -q`, `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+- Kept the CLI integration tests under `tests/` using temp workspaces with fixed `database/app-state.json` and `scripts/run_paddle_ocr.sh` layout
+Next:
+- Task 7: update plan/status tracking files for milestone completion
+
+2026-04-05 12:33:50 CST
+- CLI OCR managed-assets milestone completed: marked the implementation plan and plans index entry as `Done`
+- Tracking is now consistent across `docs/plans`, `progress.txt`, and `lesson.md`
+- Final verification remains `cargo test --workspace` before branch handoff
+Next:
+- Branch handoff / integration decision
+
+2026-04-06
+- Approved the next persistence milestone to replace JSON runtime state with SQLite at `database/app-state.db`
+- Wrote the paired design and implementation plan for automatic JSON-to-SQLite migration with backup rename to `database/app-state.migrated.json`
+- Updated `docs/plans/INDEX.md` to register the new `sqlite-persistence-auto-migration` topic
+Next:
+- Execute `docs/plans/2026-04-06-sqlite-persistence-auto-migration-implementation.md`
+
+2026-04-06 15:35:16 CST
+- SQLite persistence Task 1 completed: added a `rusqlite`-backed `SqliteAppStateStore` skeleton with the new default runtime path `database/app-state.db`
+- Added `tests/sqlite_app_state_store_smoke.rs` and verified schema creation plus empty queued-job lookup behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 2: add SQLite round-trip persistence operations and coverage for current persisted entities
+
+2026-04-06 15:40:32 CST
+- SQLite persistence Task 2 completed: added transactional save/query support for papers, blocks, reading progress, OCR jobs, OCR results, and full store snapshots
+- Added `tests/sqlite_app_state_store_round_trip.rs` to verify imported text, queued OCR work, and completed OCR artifacts persist across a database reopen
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 3: add JSON-to-SQLite auto-migration with success and invalid-JSON coverage
+
+2026-04-06 15:43:38 CST
+- SQLite persistence Task 3 completed: added `SqliteAppStateStore::open_or_migrate` with legacy JSON bootstrap, transactional import, and post-commit rename to `database/app-state.migrated.json`
+- Added `tests/sqlite_app_state_store_migrates_json.rs` and `tests/sqlite_app_state_store_invalid_json_preserved.rs` to lock in both the successful migration path and malformed-JSON preservation behavior
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 4: move import orchestration to the SQLite runtime store
+
+2026-04-06 15:46:42 CST
+- SQLite persistence Task 4 completed: moved runtime PDF import orchestration onto `SqliteAppStateStore` while preserving managed asset writes under `database/assets/`
+- Added `tests/import_orchestrator_persists_ready_text_sqlite.rs` and `tests/import_orchestrator_queues_ocr_sqlite.rs` to cover both embedded-text success and OCR-queue persistence on SQLite
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 5: move the local OCR executor to the SQLite runtime store
+
+2026-04-06 15:52:40 CST
+- SQLite persistence Task 5 completed: moved `LocalOcrExecutor` to a shared store abstraction and added transactional SQLite job-claim helpers for explicit job runs and `run_next_job()`
+- Added `tests/local_ocr_executor_persisted_success_sqlite.rs`, `tests/local_ocr_executor_persisted_failure_sqlite.rs`, and `tests/local_ocr_executor_run_next_job_sqlite.rs` while keeping existing JSON executor coverage green
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 6: switch CLI default persistence to SQLite and wire CLI-triggered auto-migration
+
+2026-04-06 15:57:01 CST
+- SQLite persistence Task 6 completed: switched `crates/cli` to the default runtime database `database/app-state.db` and loaded persistence through the SQLite `open_or_migrate` entrypoint
+- Added `tests/cli_ocr_run_next_sqlite_success.rs`, `tests/cli_ocr_run_job_sqlite_success.rs`, and `tests/cli_auto_migrates_legacy_json.rs`, and updated the older CLI success-path tests to assert against SQLite runtime state
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 7: retire JSON as the runtime default and align docs plus tracking
+
+2026-04-06 16:01:16 CST
+- SQLite persistence Task 7 completed: removed the JSON default-path re-export, added `JsonAppStateStore::load_migration_input`, and routed the remaining JSON-facing tests plus SQLite bootstrap through the migration-specific loader
+- Updated `tests/json_app_state_store_smoke.rs` so the public default-path expectation points at `database/app-state.db` while JSON remains available only as migration input
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Task 8: run the closing regression set, update plan/index status to `Done`, and record final verification
+
+2026-04-06 16:02:47 CST
+- SQLite persistence auto-migration milestone completed: marked the implementation plan and `docs/plans/INDEX.md` entry as `Done`
+- Verified focused regressions with `cargo test --test sqlite_app_state_store_smoke -q`, `cargo test --test sqlite_app_state_store_migrates_json -q`, `cargo test --test import_orchestrator_queues_ocr_sqlite -q`, `cargo test --test local_ocr_executor_persisted_success_sqlite -q`, and `cargo test --test cli_auto_migrates_legacy_json -q`
+- Verified repository-wide checks with `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Branch handoff / integration decision
+
+2026-04-06 16:02:47 CST
+- Merged `feat/sqlite-persistence-auto-migration` into `master` locally and reran `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace` on the merged result
+- Applied the post-merge `cargo fmt` cleanup on `master` so the merged tree stays verification-clean
+- Local branch integration is complete; remaining repository state is the local `master` branch ahead of `origin/master`
+Next:
+- Push `master` when ready
+
+2026-04-06 17:30:33 CST
+- Archived all completed plan documents from `docs/plans/` into `docs/plans/archive/`
+- Rewrote `docs/plans/INDEX.md` to track unfinished plans only and added `docs/plans/archive/INDEX.md` as the archive manifest
+- Confirmed there are currently no unfinished plan topics left under `docs/plans/`
+Next:
+- Add the next approved unfinished topic back under `docs/plans/` and update both indexes when it is completed
+
+2026-04-06 20:30:04 CST
+- Approved and wrote a new PRD-aligned design doc plus implementation plan for the remaining web-first, local-first MVP closed loop under `docs/plans/`
+- Registered `web-mvp-closed-loop` as the active planning topic in `docs/plans/INDEX.md` and reconciled the plan with Cargo-only repository governance
+- Captured the implementation path as a Cargo-native split architecture: Rust/WASM web app + thin Rust gateway for AI actions
+Next:
+- Execute `docs/plans/2026-04-06-web-mvp-closed-loop-implementation.md`
+
+2026-05-11
+- Web MVP closed-loop milestone completed: all 8 implementation tasks delivered
+- US-001: Scaffolded Cargo-native web app crate with Leptos route placeholders for library, import, reading, vocabulary, and settings
+- US-002: Added browser-local persistence with InMemoryStore, AppStorage trait, and domain types (Annotation, VocabularyItem) in crates/core
+- US-003: Implemented import flows for pasted text and PDF (with stub pdf.js bridge), producing papers, blocks, and reading progress
+- US-004: Built immersive reading loop with ReadingSession, NavigationAction prev/next, progress tracking, and position restore on reload
+- US-005: Added selection annotations with resilient text anchors (prefix/suffix/offset) and vocabulary auto-collection with upsert merge
+- US-006: Expanded gateway with Axum-based POST /api/translate and POST /api/explain endpoints, StubAiClient, config, tracing logging
+- US-007: Wired AI translation and explanation flows into the reading experience with WebAiClient, offline detection, and AI record persistence
+- US-008: Hardened MVP with library listing summaries, import error handling, README documentation, and updated plan/progress tracking
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- ~~Evaluate merging `web-mvp-closed-loop` topic to archive~~
+- Decide whether to push `master` to remote
+
+2026-05-12
+- Archived completed `web-mvp-closed-loop` plan: moved design + implementation files to `docs/plans/archive/`, updated both INDEX.md files
+- Recorded 4 implementation lessons in `lesson.md`: Leptos 0.7 CSR patterns, `#[cfg(test)]` cross-crate visibility, root Cargo.toml dev-dependency drift, plan archive governance discipline
+- `docs/plans/INDEX.md` now reads "No active topics. All planned work is complete."
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
+- Decide whether to push `master` to remote

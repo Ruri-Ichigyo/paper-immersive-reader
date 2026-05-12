@@ -1,0 +1,151 @@
+{
+  "project": "Paper Immersive Reader",
+  "branchName": "ralph/web-mvp-closed-loop",
+  "description": "Web MVP Closed Loop - Deliver the remaining PRD MVP as a Cargo-native web-first, local-first product: import papers, read block-by-block, translate/explain selections, annotate text, restore progress, and auto-collect vocabulary.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold the Cargo-native web app crate with route placeholders",
+      "description": "As a developer, I need a new Rust/WASM web-app crate wired into the Cargo workspace with route modules for library, import, reading, vocabulary, and settings.",
+      "acceptanceCriteria": [
+        "crates/web-app/Cargo.toml exists and is a workspace member",
+        "Route modules exist: library, import, read, vocabulary, settings",
+        "App shell compiles with route placeholders and navigation",
+        "scripts/run_web_app.sh exists as startup helper",
+        "cargo test --test web_app_workspace_smoke passes",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Add browser-local IndexedDB persistence for all MVP entities",
+      "description": "As a developer, I need local browser storage for papers, blocks, reading progress, annotations, vocabulary, AI records, and settings so the app works offline.",
+      "acceptanceCriteria": [
+        "Storage modules exist under crates/web-app/src/storage/ with schema, IndexedDB wrapper, and per-entity repos",
+        "Domain types Annotation and VocabularyItem added to crates/core",
+        "Paper, Block, and ReadingProgress round-trip through storage",
+        "Vocabulary upsert increments lookup_count instead of duplicating",
+        "cargo test --test web_storage_round_trip passes",
+        "cargo test --test web_vocabulary_round_trip passes",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement import flow for pasted text and local PDFs",
+      "description": "As a user, I want to import a paper by pasting text or uploading a PDF so that I can read it in the immersive reader.",
+      "acceptanceCriteria": [
+        "Paste-text import creates a Paper, Blocks, and initial ReadingProgress at index 0",
+        "PDF import stores the original file locally, extracts text via vendored pdf.js bridge, normalizes into blocks, and transitions paper to ReadyText",
+        "New papers appear in the library view with status and progress summary",
+        "cargo test --test web_import_paste_flow passes",
+        "cargo test --test web_import_pdf_flow passes",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Build the immersive reading loop with progress tracking and restore",
+      "description": "As a user, I want to navigate blocks with previous/next controls and have my reading position restored when I reopen a paper.",
+      "acceptanceCriteria": [
+        "Next/previous block navigation updates stored current_block_index on each move",
+        "Progress indicator shows block index and percentage",
+        "Reloading the app restores the last-saved block instead of resetting to block 0",
+        "cargo test --test web_block_navigation passes",
+        "cargo test --test web_reading_progress_restore passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add selection annotations with resilient anchors and vocabulary auto-collection",
+      "description": "As a user, I want to highlight and annotate text selections, and have looked-up terms automatically saved to my vocabulary list.",
+      "acceptanceCriteria": [
+        "Selection popover offers annotate action on selected text",
+        "Annotations store quote, prefix/suffix context, block hint, and offsets for resilient re-anchoring",
+        "Annotations survive reload and reattach to the same paper/block",
+        "Lookup events upsert vocabulary entries with incremented lookup_count (no duplicates)",
+        "Vocabulary route lists all saved entries",
+        "cargo test --test web_annotation_round_trip passes",
+        "cargo test --test web_vocabulary_auto_collect passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Expand the gateway with AI translation and explanation endpoints",
+      "description": "As a developer, I need the gateway to expose POST /api/translate and POST /api/explain endpoints backed by an injectable AI client so the web app can request AI assistance.",
+      "acceptanceCriteria": [
+        "POST /api/translate accepts selected text, type, source/target language, and context; returns structured JSON with translation text and normalized term",
+        "POST /api/explain accepts selected text, explanation type (term|sentence), language, and context; returns structured JSON with explanation, optional background, and optional caution",
+        "Gateway loads config from environment variables (bind address, AI key, token)",
+        "Structured tracing logs written to logs/YYYY-MM-DD_HHMMSS.log",
+        "docs/runtime-config.md documents required environment variables",
+        "scripts/run_gateway.sh exists as standard startup entrypoint",
+        "cargo test --test gateway_translate_contract passes",
+        "cargo test --test gateway_explain_contract passes",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Wire translation and explanation into the reading experience",
+      "description": "As a user, I want to select text in the reading view and get AI-powered translations or explanations displayed in a side panel.",
+      "acceptanceCriteria": [
+        "Selecting text in the reading view shows a popover with translate and explain actions",
+        "Translation action calls the gateway, persists the result as an AI record, and renders a bilingual result in the translation panel",
+        "Explanation action calls the gateway and renders the response in the AI panel using the configured explanation language",
+        "Settings route controls explanation language preference",
+        "When gateway is unavailable, reading stays functional and AI controls show an explicit disabled/retry state",
+        "cargo test --test web_selection_translate_flow passes",
+        "cargo test --test web_explain_panel_flow passes",
+        "cargo test --test web_ai_offline_state passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Harden the MVP with library summaries, error states, and documentation",
+      "description": "As a user, I want the library to show paper summaries, import failures to be recoverable, and the project to have clear startup documentation.",
+      "acceptanceCriteria": [
+        "Library view lists each paper with title, source type, status, and progress summary",
+        "Failed PDF extraction leaves a visible failed-paper state with a retry action (no silent data loss)",
+        "README.md documents MVP startup instructions and the split web/gateway architecture",
+        "docs/plans/INDEX.md, progress.txt, and lesson.md reflect milestone completion",
+        "cargo test --test web_library_listing passes",
+        "cargo test --test web_import_error_state passes",
+        "cargo fmt --check passes",
+        "cargo clippy --workspace --all-targets --all-features -- -D warnings passes",
+        "cargo test --workspace passes",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

@@ -238,7 +238,13 @@ Next:
 - US-004: Added GatewayAiClient (real HTTP to gateway via gloo-net in browser)
 - US-005: Hardening — all gates pass (fmt, clippy, 57 tests); browser verification pending
 - Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+2026-05-12
+- WASM build fix: resolved web-sys API mismatches in IndexedDbStore and GatewayAiClient
+- Added DomStringList feature and fixed Closure::wrap patterns for IdbRequest/IdbOpenDbRequest callbacks
+- Fixed GatewayAiClient to use gloo-net 0.6 builder API (Request::post().json().send())
+- Added gloo-net json feature for serde serialization support
+- Verified `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+- All gates still pass: `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`
 Next:
 - Set up wasm32 + trunk serve for browser verification
-- Refactor importing crate dependency optional for wasm32 target
 - Decide whether to push `master` to remote

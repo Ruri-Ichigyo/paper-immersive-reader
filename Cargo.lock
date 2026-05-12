@@ -1698,12 +1698,16 @@ dependencies = [
 name = "paper-immersive-reader-web-app"
 version = "0.1.0"
 dependencies = [
+ "gloo-net",
+ "js-sys",
  "leptos",
  "paper-immersive-reader-core",
  "paper-immersive-reader-importing",
  "serde",
+ "serde_json",
  "uuid",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

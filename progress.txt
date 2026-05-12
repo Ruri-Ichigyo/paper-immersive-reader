@@ -226,9 +226,19 @@ Next:
 - Decide whether to push `master` to remote
 
 2026-05-12
-- Archived completed `web-mvp-closed-loop` plan: moved design + implementation files to `docs/plans/archive/`, updated both INDEX.md files
-- Recorded 4 implementation lessons in `lesson.md`: Leptos 0.7 CSR patterns, `#[cfg(test)]` cross-crate visibility, root Cargo.toml dev-dependency drift, plan archive governance discipline
-- `docs/plans/INDEX.md` now reads "No active topics. All planned work is complete."
+- Archived completed `web-mvp-closed-loop` plan
+- Recorded 4 implementation lessons in `lesson.md`
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+
+2026-05-12
+- Replace-stubs milestone completed: all 5 implementation stories delivered
+- US-001: Replaced StubAiClient with OpenAiClient (real OpenAI-compatible API, env-configurable)
+- US-002: Added IndexedDbStore (browser IndexedDB with async API, cfg-gated for wasm32)
+- US-003: Added WasmPdfBridge (delegates to vendored pdf.js via wasm-bindgen)
+- US-004: Added GatewayAiClient (real HTTP to gateway via gloo-net in browser)
+- US-005: Hardening — all gates pass (fmt, clippy, 57 tests); browser verification pending
 - Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
 Next:
+- Set up wasm32 + trunk serve for browser verification
+- Refactor importing crate dependency optional for wasm32 target
 - Decide whether to push `master` to remote

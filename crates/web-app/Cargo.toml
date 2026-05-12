@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "web-app-bin"
+path = "src/main.rs"
+
 [dependencies]
 paper-immersive-reader-core = { path = "../core" }
 paper-immersive-reader-importing = { path = "../importing", optional = true }

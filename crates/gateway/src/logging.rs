@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
 pub fn init_logging() -> WorkerGuard {
@@ -20,12 +22,21 @@ pub fn init_logging() -> WorkerGuard {
 
     let (non_blocking, guard) = tracing_appender::non_blocking(file);
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .with_writer(non_blocking)
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    let file_layer = tracing_subscriber::fmt::layer()
         .with_target(false)
+        .with_writer(non_blocking);
+
+    let stdout_layer = tracing_subscriber::fmt::layer()
+        .with_target(false)
+        .with_writer(std::io::stdout);
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(file_layer)
+        .with(stdout_layer)
         .init();
 
     guard

@@ -8,4 +8,4 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> Starting web app dev server..."
-trunk serve --open crates/web-app/index.html
+trunk serve crates/web-app/index.html --open

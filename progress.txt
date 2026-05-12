@@ -222,5 +222,13 @@ Next:
 - US-008: Hardened MVP with library listing summaries, import error handling, README documentation, and updated plan/progress tracking
 - Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
 Next:
-- Evaluate merging `web-mvp-closed-loop` topic to archive
+- ~~Evaluate merging `web-mvp-closed-loop` topic to archive~~
+- Decide whether to push `master` to remote
+
+2026-05-12
+- Archived completed `web-mvp-closed-loop` plan: moved design + implementation files to `docs/plans/archive/`, updated both INDEX.md files
+- Recorded 4 implementation lessons in `lesson.md`: Leptos 0.7 CSR patterns, `#[cfg(test)]` cross-crate visibility, root Cargo.toml dev-dependency drift, plan archive governance discipline
+- `docs/plans/INDEX.md` now reads "No active topics. All planned work is complete."
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, and `cargo test --workspace`
+Next:
 - Decide whether to push `master` to remote

@@ -54,14 +54,12 @@ Should usually include a short top summary with fields such as:
 
 ## Current Active Topics
 
-| Topic | Date | Design | Implementation | Status | Notes |
-| --- | --- | --- | --- | --- | --- |
-| `web-mvp-closed-loop` | 2026-04-06 | [`2026-04-06-web-mvp-closed-loop-design.md`](./2026-04-06-web-mvp-closed-loop-design.md) | [`2026-04-06-web-mvp-closed-loop-implementation.md`](./2026-04-06-web-mvp-closed-loop-implementation.md) | `Approved` / `Done` | Cargo-native web-first MVP plan that reconciles PRD scope with repository governance. |
+_No active topics. All planned work is complete._
 
 ## Archive Summary
 
-- Archived completed topics: 12
-- Archived plan documents: 24
+- Archived completed topics: 13
+- Archived plan documents: 26
 - Archive manifest: [`archive/INDEX.md`](./archive/INDEX.md)
 
 ## Maintenance Rules

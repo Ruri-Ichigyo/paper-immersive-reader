@@ -145,3 +145,29 @@
 - What was tried: checked whether the new worktree had actually been created, confirmed the branch and copied plan files were present, and then reran the setup flow sequentially inside the finished worktree directory.
 - Final fix: kept worktree creation and file sync first, then ran `cargo build` and `cargo test` sequentially in `.worktrees/web-mvp-closed-loop`.
 - Prevention: do not parallelize worktree creation with commands that require the new directory to already exist; treat worktree setup as a strictly ordered flow.
+
+## 2026-05-11 (web MVP closed loop — Leptos 0.7 CSR patterns)
+
+- Symptom: the first compile pass for the web-app crate hit type-inference errors in `view!` macro branches and `Callback` call sites.
+- Root cause: Leptos 0.7 uses `Callback::run(())` not `Callback::call(())`, and different HTML element types in conditional branches (e.g. `<p>` vs `<div>`) produce incompatible `impl IntoView` types that the macro cannot unify.
+- What was tried: compared the failing branches against the Leptos 0.7 docs, identified the specific APIs that changed from 0.6, and fixed each site individually.
+- Final fix: replaced all `Callback::call(())` calls with `Callback::run(())`; wrapped divergent branch types with `.into_any()` where the conditional couldn't be rewritten as `Option::map`; and removed redundant `.clone()` calls on `Callback<T>` since it implements `Copy` in 0.7.
+- Prevention: when adopting a new major version of a UI framework, audit the reactive primitives (`Callback`, `Signal`, `MaybeSignal`) before writing component code, since API surface changes often surface as inscrutable type errors inside macro-expanded code.
+
+- Symptom: `WebAiClient::with_canned_response` was gated behind `#[cfg(test)]` but integration tests under `tests/` couldn't access it.
+- Root cause: `#[cfg(test)]` only applies within the crate's own test tree; integration tests in the outer `tests/` directory compile as separate crates against the public API, so cfg-gated methods are invisible.
+- What was tried: confirmed the visibility boundary by reading the integration test errors, then considered adding a `testing` feature flag before deciding on a simpler approach.
+- Final fix: made `with_canned_response` always available with `#[allow(dead_code)]` so integration tests can construct pre-configured clients without a feature flag or cfg hack.
+- Prevention: when a test helper needs to be callable from `tests/`, do not gate it with `#[cfg(test)]`; instead use `#[allow(dead_code)]` or a public `#[doc(hidden)]` method on the type itself.
+
+- Symptom: the root `Cargo.toml` needed new dev-dependencies (`tokio`, `axum`, `serde_json`, `reqwest`) added mid-implementation as new integration tests were written for the gateway and AI flows.
+- Root cause: integration tests under `tests/` link against the root crate, so any dependency used there must be declared in the root `Cargo.toml` dev-dependencies even if the individual workspace crate already depends on it.
+- What was tried: added each missing dev-dependency as the compiler errors surfaced them, then reran verification.
+- Final fix: root `Cargo.toml` now includes `tokio`, `axum`, `serde_json`, `reqwest`, and `paper-immersive-reader-web-app` as dev-dependencies so all integration tests compile and link.
+- Prevention: when scaffolding new integration-test files that exercise a new crate's public API, add the required dev-dependencies to the root `Cargo.toml` at test-creation time rather than at verification time.
+
+- Symptom: after all 8 user stories were complete, `docs/plans/INDEX.md` still listed `web-mvp-closed-loop` as an active topic with `Done` status, violating the archive governance rule that completed topics move to `docs/plans/archive/`.
+- Root cause: the plans governance rules (added in an earlier milestone) require moving both design and implementation files to `archive/`, updating both `INDEX.md` files, and removing the topic row from the active index — but this cleanup step was deferred past the final story verification.
+- What was tried: moved the paired design/implementation files to `archive/`, rewrote `docs/plans/INDEX.md` to show zero active topics, and appended the `web-mvp-closed-loop` row to `docs/plans/archive/INDEX.md`.
+- Final fix: `docs/plans/INDEX.md` now reads "_No active topics. All planned work is complete._" and the archived count reflects 13 topics / 26 documents.
+- Prevention: when a multi-story milestone completes, run the archive cleanup as the very next step after the final verification pass rather than leaving it for a separate change.

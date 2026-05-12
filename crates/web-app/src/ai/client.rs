@@ -147,3 +147,137 @@ fn current_time_ms() -> u64 {
         .unwrap_or_default()
         .as_millis() as u64
 }
+
+// --- Gateway HTTP client (browser / WASM) ---
+
+/// Real AI client that calls the gateway HTTP API via gloo-net.
+/// Only available on wasm32 target. For native testing, use `WebAiClient`.
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Clone)]
+pub struct GatewayAiClient {
+    gateway_url: String,
+    is_online: bool,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl GatewayAiClient {
+    pub fn new(gateway_url: String) -> Self {
+        Self {
+            gateway_url: gateway_url.trim_end_matches('/').to_string(),
+            is_online: true,
+        }
+    }
+
+    pub fn new_offline() -> Self {
+        Self {
+            gateway_url: String::new(),
+            is_online: false,
+        }
+    }
+
+    pub fn is_online(&self) -> bool {
+        self.is_online
+    }
+
+    pub fn set_online(&mut self, online: bool) {
+        self.is_online = online;
+    }
+
+    /// Sync check stub (WASM health check needs async).
+    pub fn check_online(&mut self) -> bool {
+        true
+    }
+
+    /// Sync stub that guides users to the async path.
+    pub fn translate(
+        &self,
+        _text: &str,
+        _target: &str,
+        _ctx: Option<&str>,
+    ) -> Result<String, String> {
+        Err("GatewayAiClient: use translate_async in WASM".into())
+    }
+
+    pub fn explain(
+        &self,
+        _text: &str,
+        _type: &str,
+        _lang: &str,
+        _ctx: Option<&str>,
+    ) -> Result<super::AiResult, String> {
+        Err("GatewayAiClient: use explain_async in WASM".into())
+    }
+
+    /// Async translate — calls POST /api/translate on the gateway.
+    pub async fn translate_async(
+        &self,
+        text: &str,
+        target_language: &str,
+        context: Option<&str>,
+    ) -> Result<String, String> {
+        let body = serde_json::json!({
+            "text": text,
+            "target_language": target_language,
+            "context": context,
+        });
+        let mut opts = gloo_net::http::RequestOptions::default();
+        opts.method = gloo_net::http::Method::POST;
+        opts.headers = std::collections::HashMap::from([(
+            "Content-Type".to_string(),
+            "application/json".to_string(),
+        )]);
+        opts.body = Some(serde_json::to_string(&body).unwrap_or_default().into());
+
+        let resp =
+            gloo_net::http::Request::new(&format!("{}/api/translate", self.gateway_url), opts)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+        let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+        json["translation"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| "no translation in response".to_string())
+    }
+
+    /// Async explain — calls POST /api/explain on the gateway.
+    pub async fn explain_async(
+        &self,
+        text: &str,
+        explanation_type: &str,
+        language: &str,
+        context: Option<&str>,
+    ) -> Result<super::AiResult, String> {
+        let body = serde_json::json!({
+            "text": text,
+            "explanation_type": explanation_type,
+            "language": language,
+            "context": context,
+        });
+        let mut opts = gloo_net::http::RequestOptions::default();
+        opts.method = gloo_net::http::Method::POST;
+        opts.headers = std::collections::HashMap::from([(
+            "Content-Type".to_string(),
+            "application/json".to_string(),
+        )]);
+        opts.body = Some(serde_json::to_string(&body).unwrap_or_default().into());
+
+        let resp = gloo_net::http::Request::new(&format!("{}/api/explain", self.gateway_url), opts)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+        Ok(super::AiResult {
+            record_type: format!("explain_{}", explanation_type),
+            input: text.to_string(),
+            output: json["explanation"]
+                .as_str()
+                .unwrap_or("[no explanation]")
+                .to_string(),
+            language: language.to_string(),
+            normalized_term: None,
+        })
+    }
+}

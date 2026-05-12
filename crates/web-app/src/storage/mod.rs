@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+pub mod indexed_db_store;
 pub mod memory_store;
 pub mod schema;
 

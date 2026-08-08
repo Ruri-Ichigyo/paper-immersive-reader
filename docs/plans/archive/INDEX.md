@@ -24,7 +24,8 @@ This directory stores completed planning artifacts that were moved out of `docs/
 | ocr-json-persistence-local-queue | 2026-04-05 | [design](./2026-04-05-ocr-json-persistence-local-queue-design.md) | [implementation](./2026-04-05-ocr-json-persistence-local-queue-implementation.md) | Completed | Application crate migration and JSON-backed OCR queue closure are implemented |
 | cli-ocr-managed-assets | 2026-04-05 | [design](./2026-04-05-cli-ocr-managed-assets-design.md) | [implementation](./2026-04-05-cli-ocr-managed-assets-implementation.md) | Completed | Managed PDF assets, script-backed OCR runner, and CLI OCR commands are implemented |
 | sqlite-persistence-auto-migration | 2026-04-06 | [design](./2026-04-06-sqlite-persistence-auto-migration-design.md) | [implementation](./2026-04-06-sqlite-persistence-auto-migration-implementation.md) | Completed | SQLite is the runtime store and auto-migrates legacy JSON on first open |
-| web-mvp-closed-loop | 2026-04-06 | [design](./2026-04-06-web-mvp-closed-loop-design.md) | [implementation](./2026-04-06-web-mvp-closed-loop-implementation.md) | Completed | Web MVP Closed Loop — Cargo-native web-first product with import, reading, annotations, vocabulary, and AI integration |
+| web-mvp-closed-loop | 2026-04-06 | [design](./2026-04-06-web-mvp-closed-loop-design.md) | [implementation](./2026-04-06-web-mvp-closed-loop-implementation.md) | Completed | Web MVP Closed Loop - Cargo-native web-first product with import, reading, annotations, vocabulary, and AI integration |
+| mvp-acceptance-fixes | 2026-08-08 | [design](./2026-08-08-mvp-acceptance-fixes-design.md) | [implementation](./2026-08-08-mvp-acceptance-fixes-implementation.md) | Completed | Fixed 3 critical gaps (pdf.js deployment, Paper ID collision, gateway_url restore) + 4 UX polish items (inline annotations, keyboard nav, vocabulary management, header/footer filtering) + paragraph translation |
 
 ## Archive Rules
 

@@ -58,8 +58,8 @@ _No active topics. All planned work is complete._
 
 ## Archive Summary
 
-- Archived completed topics: 13
-- Archived plan documents: 26
+- Archived completed topics: 14
+- Archived plan documents: 28
 - Archive manifest: [`archive/INDEX.md`](./archive/INDEX.md)
 
 ## Maintenance Rules

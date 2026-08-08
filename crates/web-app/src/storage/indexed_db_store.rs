@@ -123,6 +123,7 @@ fn create_stores(db: &IdbDatabase) {
 
 // --- Public API ---
 
+#[derive(Clone)]
 pub struct IndexedDbStore {
     db: IdbDatabase,
 }
@@ -420,6 +421,26 @@ impl IndexedDbStore {
                 .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
             await_val(&req).await?;
         }
+        Ok(())
+    }
+
+    /// Replace a vocabulary item entirely (for learned/note updates).
+    pub async fn update_vocabulary(&self, item: &VocabularyItem) -> Result<(), StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("vocabulary")),
+                IdbTransactionMode::Readwrite,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("vocabulary")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let jv = to_json(item)?;
+        let req = store
+            .put_with_key(&jv, &JsValue::from_str(&item.id.0))
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        await_val(&req).await?;
         Ok(())
     }
 

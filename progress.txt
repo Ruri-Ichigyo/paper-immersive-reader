@@ -248,3 +248,43 @@ Next:
 Next:
 - Set up wasm32 + trunk serve for browser verification
 - Decide whether to push `master` to remote
+
+2026-08-07
+- UI wiring milestone completed: connected all domain logic and components into functional route pages
+- Added leptos_router for client-side routing with /library, /import, /read/:paper_id, /vocabulary, /settings
+- Created AppState module with RwSignal<InMemoryStore> for reactive state management via Leptos context
+- Built Library page: lists papers with title/source/status/date, click to read, button to import
+- Built Import page: paste-text form and PDF upload form with file reading via FileReader
+- Built Read page: immersive reading with block navigation, progress indicator, text selection popover,
+  translation panel, AI explanation panel, annotation form, and annotation list
+- Built Vocabulary page: table of looked-up terms with lookup count and timestamps
+- Built Settings page: explanation language selector, gateway URL, custom tags editor
+- Added styles.css for clean, readable immersive reading UI
+- Updated GatewayAiClient explain_async to include background and caution in output
+- Added FileList, HtmlTextAreaElement, HtmlInputElement, HtmlSelectElement to web-sys features
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+  `cargo test --workspace` (89 tests), and `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+- Added IndexedDB persistence: on wasm32 startup, loads all data from IndexedDB into InMemoryStore;
+  after each mutation, persists asynchronously to IndexedDB via spawn_local
+- Added default tags (重点/疑问/术语/结论/复习) to annotation form
+- All PRD MVP success criteria now met: import, immersive reading, selection translation,
+  AI explanation, annotations persist across reload, progress restore, vocabulary auto-collect
+
+2026-08-08
+- MVP acceptance fixes milestone completed: all 8 tasks delivered across 3 phases
+- Phase 1 Critical Fixes:
+  - T1: Deployed pdf.js assets and bridge function in index.html; made WasmPdfBridge async
+  - T2: Fixed Paper ID collision by replacing counter with UUID-based short_id; Block IDs also use short_id
+  - T3: Fixed gateway_url not restoring from IndexedDB on reload (synced from persisted Settings)
+- Phase 2 MVP Polish:
+  - T4: Added inline annotation decoration via BlockContent component (highlight/underline/note in-text)
+  - T5: Added keyboard navigation (Arrow/PageDown/Space=next, Arrow/PageUp=prev, F=fullscreen)
+  - T6: Completed vocabulary management UI (mark learned/unlearned, add/edit notes, persisted to IndexedDB)
+  - T7: Added header/footer noise removal (detects repeated lines across pdf.js pages) and
+    single-newline segmentation fallback for PDFs without double-newline paragraph breaks
+- Phase 3 Feature Completeness:
+  - T8: Added "Translate Block" button for paragraph-level translation (FR-14)
+  - T9: Merged into T7 (segmentation improvement)
+- Added tests: web_vocabulary_update.rs (2 tests), web_import_header_footer_filter.rs (2 tests)
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+  `cargo test --workspace` (93 tests), and `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`

@@ -121,6 +121,12 @@ impl AppStorage for InMemoryStore {
         Ok(())
     }
 
+    fn update_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError> {
+        let key = item.term.to_lowercase();
+        self.vocabulary.insert(key, item.clone());
+        Ok(())
+    }
+
     fn list_vocabulary(&self) -> Result<Vec<VocabularyItem>, StorageError> {
         Ok(self.vocabulary.values().cloned().collect())
     }

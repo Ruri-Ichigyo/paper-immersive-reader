@@ -5,7 +5,6 @@ use paper_immersive_reader_core::domain::{Annotation, AnnotationType};
 pub fn AnnotationRenderer(annotations: Vec<Annotation>) -> impl IntoView {
     view! {
         <div class="annotation-list">
-            <h3>"Annotations"</h3>
             {annotations.into_iter().map(|ann| {
                 let type_class = match ann.annotation_type {
                     AnnotationType::Highlight => "ann-highlight",

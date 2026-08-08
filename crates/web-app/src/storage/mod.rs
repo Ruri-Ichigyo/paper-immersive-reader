@@ -41,6 +41,7 @@ pub trait AppStorage {
 
     // Vocabulary
     fn upsert_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError>;
+    fn update_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError>;
     fn list_vocabulary(&self) -> Result<Vec<VocabularyItem>, StorageError>;
 
     // AI records

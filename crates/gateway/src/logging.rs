@@ -17,13 +17,11 @@ pub fn init_logging() -> WorkerGuard {
     // Format: logs/YYYY-MM-DD_HHMMSS.log
     let dt = chrono_lite(&now);
     let filename = format!("{}.log", dt);
-    let file = fs::File::create(log_dir.join(filename))
-        .expect("failed to create log file");
+    let file = fs::File::create(log_dir.join(filename)).expect("failed to create log file");
 
     let (non_blocking, guard) = tracing_appender::non_blocking(file);
 
-    let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     let file_layer = tracing_subscriber::fmt::layer()
         .with_target(false)

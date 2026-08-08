@@ -6,6 +6,7 @@ use paper_immersive_reader_core::domain::{
 
 use crate::selection::TextSelection;
 use crate::storage::AppStorage;
+use crate::util::short_id;
 
 use self::anchors::compute_anchors;
 
@@ -31,14 +32,7 @@ pub fn create_annotation(
     };
 
     Annotation {
-        id: AnnotationId(format!(
-            "ann-{}",
-            uuid::Uuid::new_v4()
-                .to_string()
-                .split('-')
-                .next()
-                .unwrap_or("0")
-        )),
+        id: AnnotationId(short_id("ann")),
         paper_id,
         block_id,
         annotation_type: input.annotation_type,

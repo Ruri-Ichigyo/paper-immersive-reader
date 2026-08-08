@@ -25,3 +25,12 @@ target
 !.claude/
 !.claude/archive/
 .claude/worktrees/
+
+# Build artifacts
+dist/
+
+# Log files
+logs/
+
+# Test results
+test-results/

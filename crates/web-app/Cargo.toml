@@ -14,9 +14,13 @@ path = "src/main.rs"
 paper-immersive-reader-core = { path = "../core" }
 paper-immersive-reader-importing = { path = "../importing", optional = true }
 leptos = { version = "0.7", features = ["csr"] }
+leptos_router = { version = "0.7" }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
   "Window", "Document", "Element", "HtmlElement",
+  "HtmlTextAreaElement", "HtmlInputElement", "HtmlSelectElement",
+  "File", "FileList", "FileReader", "Blob",
+  "Selection", "Range", "StaticRange",
   "IdbDatabase", "IdbFactory", "IdbOpenDbRequest", "IdbRequest",
   "IdbTransaction", "IdbTransactionMode", "IdbObjectStore",
   "IdbIndex", "IdbKeyRange", "IdbCursorWithValue",

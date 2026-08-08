@@ -258,13 +258,29 @@ impl GatewayAiClient {
             .map_err(|e| e.to_string())?;
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+
+        // Build output with optional background and caution sections
+        let mut output = json["explanation"]
+            .as_str()
+            .unwrap_or("[no explanation]")
+            .to_string();
+        if let Some(bg) = json["background"].as_str() {
+            if !bg.is_empty() {
+                output.push_str("\n\nBackground: ");
+                output.push_str(bg);
+            }
+        }
+        if let Some(c) = json["caution"].as_str() {
+            if !c.is_empty() {
+                output.push_str("\n\nNote: ");
+                output.push_str(c);
+            }
+        }
+
         Ok(super::AiResult {
             record_type: format!("explain_{}", explanation_type),
             input: text.to_string(),
-            output: json["explanation"]
-                .as_str()
-                .unwrap_or("[no explanation]")
-                .to_string(),
+            output,
             language: language.to_string(),
             normalized_term: None,
         })

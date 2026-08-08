@@ -57,10 +57,29 @@ pub fn ReadPage() -> impl IntoView {
 
     const DEFAULT_TAGS: &[&str] = &["重点", "疑问", "术语", "结论", "复习"];
 
-    // Remove fullscreen body class when the component unmounts.
+    // --- Reading session time tracking (FR-32) ---
+    let session_started: RwSignal<Option<u64>> = RwSignal::new(None);
+    let session_paper_id = paper_id();
+
+    // Remove fullscreen body class and persist reading time on unmount.
     {
         on_cleanup(move || {
             toggle_body_fullscreen(false);
+            if let Some(ref pid) = session_paper_id {
+                if let Some(started) = session_started.get_untracked() {
+                    let elapsed = current_time_ms().saturating_sub(started);
+                    if elapsed >= 1_000 {
+                        let existing = app.reading_stats(pid).unwrap_or_else(|| {
+                            crate::storage::schema::ReadingStats::new(pid.clone())
+                        });
+                        let mut stats = existing;
+                        stats.total_reading_ms += elapsed;
+                        stats.session_count += 1;
+                        stats.session_started_ms = None;
+                        app.save_reading_stats(&stats);
+                    }
+                }
+            }
         });
     }
 
@@ -78,6 +97,15 @@ pub fn ReadPage() -> impl IntoView {
             blocks.set(b);
             current_index.set(idx);
             total_blocks.set(blocks.get().len() as u32);
+
+            // Start reading session timer
+            let now = current_time_ms();
+            session_started.set(Some(now));
+            let mut stats = app
+                .reading_stats(&pid)
+                .unwrap_or_else(|| crate::storage::schema::ReadingStats::new(pid.clone()));
+            stats.session_started_ms = Some(now);
+            app.save_reading_stats(&stats);
         }
     }
 
@@ -177,14 +205,7 @@ pub fn ReadPage() -> impl IntoView {
             None => return,
         };
         let block_text = current_block_text();
-        let (start, end) = find_offsets(&block_text, &text).unwrap_or_else(|| {
-            // Fallback when the browser selection text doesn't match the
-            // block text exactly (whitespace normalisation, cross-node
-            // selection, etc.).  Use a range covering offset 0 to the
-            // selected text length - imperfect but avoids a zero-length
-            // selection that would produce broken anchors.
-            (0, text.chars().count() as u32)
-        });
+        let (start, end) = find_offsets(&block_text, &text).unwrap_or((0, 0));
         selection.set(Some(TextSelection {
             block_id,
             text,
@@ -217,9 +238,11 @@ pub fn ReadPage() -> impl IntoView {
                     // Auto-collect vocabulary for single-word lookups
                     if selected_text.split_whitespace().count() == 1 {
                         let now = current_time_ms();
+                        let term_lower = selected_text.to_lowercase();
                         let item = VocabularyItem {
                             id: VocabularyId(short_id("vocab")),
                             term: selected_text.clone(),
+                            term_lower,
                             paper_id_first_seen: pid.clone(),
                             block_id_first_seen: block_id.clone(),
                             lookup_count: 1,
@@ -234,7 +257,9 @@ pub fn ReadPage() -> impl IntoView {
                     #[cfg(target_arch = "wasm32")]
                     {
                         let gateway_url = app.gateway_url.get();
-                        let client = crate::ai::client::GatewayAiClient::new(gateway_url);
+                        let gateway_token = app.gateway_token.get();
+                        let client =
+                            crate::ai::client::GatewayAiClient::new(gateway_url, gateway_token);
                         let text_owned = selected_text.clone();
                         let pid_clone = pid.clone();
                         let block_id_clone = block_id.clone();
@@ -304,7 +329,9 @@ pub fn ReadPage() -> impl IntoView {
                     #[cfg(target_arch = "wasm32")]
                     {
                         let gateway_url = app.gateway_url.get();
-                        let client = crate::ai::client::GatewayAiClient::new(gateway_url);
+                        let gateway_token = app.gateway_token.get();
+                        let client =
+                            crate::ai::client::GatewayAiClient::new(gateway_url, gateway_token);
                         let text_owned = selected_text.clone();
                         let et_owned = et.to_string();
                         let lang_owned = language.clone();
@@ -405,7 +432,8 @@ pub fn ReadPage() -> impl IntoView {
         #[cfg(target_arch = "wasm32")]
         {
             let gateway_url = app.gateway_url.get();
-            let client = crate::ai::client::GatewayAiClient::new(gateway_url);
+            let gateway_token = app.gateway_token.get();
+            let client = crate::ai::client::GatewayAiClient::new(gateway_url, gateway_token);
             let text_owned = block_text.clone();
             let pid_clone = pid.clone();
             let block_id_clone = block_id.clone();
@@ -674,7 +702,15 @@ pub fn ReadPage() -> impl IntoView {
                                 // Annotations for this paper
                                 <div class="annotations-section">
                                     <h3>"Annotations"</h3>
-                                    <AnnotationRenderer annotations=annotations_list() />
+                                    <AnnotationRenderer
+                                        annotations=annotations_list()
+                                        on_delete=Callback::new(move |id: paper_immersive_reader_core::domain::AnnotationId| {
+                                            app.delete_annotation(&id);
+                                        })
+                                        on_update=Callback::new(move |ann: paper_immersive_reader_core::domain::Annotation| {
+                                            app.update_annotation(&ann);
+                                        })
+                                    />
                                 </div>
                             </div>
 
@@ -741,9 +777,35 @@ fn persist_progress(
 /// Returns `None` when the text cannot be found (e.g. due to browser
 /// whitespace normalisation or cross-node selections).
 fn find_offsets(block_text: &str, selected: &str) -> Option<(u32, u32)> {
-    block_text.find(selected).map(|pos| {
+    // 1. Exact match
+    if let Some(pos) = block_text.find(selected) {
         let start = block_text[..pos].chars().count() as u32;
         let end = start + selected.chars().count() as u32;
-        (start, end)
-    })
+        return Some((start, end));
+    }
+    // 2. Prefix search — look for first 20 chars of selected in block_text.
+    //    This handles whitespace normalisation and cross-node selections
+    //    where extra spaces are inserted.
+    let prefix: String = selected.chars().take(20).collect();
+    if prefix.chars().count() >= 4 {
+        if let Some(pos) = block_text.find(&prefix) {
+            let start = block_text[..pos].chars().count() as u32;
+            let end = start + selected.chars().count() as u32;
+            return Some((start, end));
+        }
+    }
+    // 3. Whitespace-normalised match — try to find the first word of the
+    //    selected text in the block and use that as the start.
+    if let Some(first_word) = selected.split_whitespace().next() {
+        if first_word.len() >= 3 {
+            if let Some(pos) = block_text.find(first_word) {
+                let start = block_text[..pos].chars().count() as u32;
+                let end = start + selected.chars().count() as u32;
+                return Some((start, end));
+            }
+        }
+    }
+    // 4. Complete failure — return None; caller produces (0, 0) and
+    //    the annotation is saved as Unanchored.
+    None
 }

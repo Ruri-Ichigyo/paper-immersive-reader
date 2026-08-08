@@ -399,8 +399,13 @@ body {
 
 .tl-result {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.tl-source, .tl-target {
+    flex: 1;
+    min-width: 0;
 }
 
 .tl-source {
@@ -411,6 +416,22 @@ body {
 .tl-target {
     font-size: 1rem;
     line-height: 1.6;
+}
+
+.tl-lang-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+@media (max-width: 600px) {
+    .tl-result {
+        flex-direction: column;
+    }
 }
 
 .tl-loading, .tl-empty, .tl-error {
@@ -720,4 +741,28 @@ body.reading-fullscreen-active .app-nav {
     font-size: 0.85rem;
     font-family: inherit;
     resize: vertical;
+}
+
+/* Import progress stage indicator */
+.import-stage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.5rem 0;
+}
+
+.import-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: import-spin 0.6s linear infinite;
+}
+
+@keyframes import-spin {
+    to { transform: rotate(360deg); }
 }

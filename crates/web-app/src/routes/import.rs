@@ -20,6 +20,7 @@ pub fn ImportPage() -> impl IntoView {
     let paste_body = RwSignal::new(String::new());
     let paste_error = RwSignal::new(Option::<String>::None);
     let paste_loading = RwSignal::new(false);
+    let paste_stage = RwSignal::new(String::new());
 
     // PDF upload form state
     let pdf_title = RwSignal::new(String::new());
@@ -27,11 +28,13 @@ pub fn ImportPage() -> impl IntoView {
     let pdf_error = RwSignal::new(Option::<String>::None);
     let pdf_loading = RwSignal::new(false);
     let pdf_bytes = RwSignal::new(Vec::<u8>::new());
+    let pdf_stage = RwSignal::new(String::new());
 
     let on_paste_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         paste_error.set(None);
         paste_loading.set(true);
+        paste_stage.set("Segmenting text…".to_string());
 
         let title = paste_title.get();
         let body = paste_body.get();
@@ -50,12 +53,14 @@ pub fn ImportPage() -> impl IntoView {
             Ok(paper) => {
                 let new_store = service.into_store();
                 app.replace_store(new_store);
+                paste_stage.set("Done!".to_string());
                 paste_loading.set(false);
                 let nav = nav_for_paste.clone();
                 nav(&format!("/read/{}", paper.id.0), Default::default());
             }
             Err(e) => {
                 paste_loading.set(false);
+                paste_stage.set(String::new());
                 paste_error.set(Some(import_error_message(&e)));
             }
         }
@@ -81,7 +86,20 @@ pub fn ImportPage() -> impl IntoView {
             let bridge = crate::import::pdf_bridge::WasmPdfBridge::new();
             let nav = nav_for_pdf.clone();
             let app = app;
+            pdf_stage.set("Extracting text…".to_string());
             wasm_bindgen_futures::spawn_local(async move {
+                // Show staged progress while the async import runs.
+                let stage = pdf_stage;
+                let advance = move |msg: &'static str, delay_ms: u32| {
+                    let stage = stage;
+                    wasm_bindgen_futures::spawn_local(async move {
+                        wait_ms(delay_ms).await;
+                        stage.set(msg.to_string());
+                    });
+                };
+                advance("Cleaning headers…", 200);
+                advance("Segmenting blocks…", 600);
+
                 let mut service = crate::import::WebImportService::new(store);
                 match service
                     .import_pdf_async(
@@ -98,11 +116,13 @@ pub fn ImportPage() -> impl IntoView {
                     Ok(paper) => {
                         let new_store = service.into_store();
                         app.replace_store(new_store);
+                        pdf_stage.set("Done!".to_string());
                         pdf_loading.set(false);
                         nav(&format!("/read/{}", paper.id.0), Default::default());
                     }
                     Err(e) => {
                         pdf_loading.set(false);
+                        pdf_stage.set(String::new());
                         pdf_error.set(Some(import_error_message(&e)));
                     }
                 }
@@ -113,6 +133,7 @@ pub fn ImportPage() -> impl IntoView {
         {
             let bridge = StubPdfBridge::failing();
             let mut service = crate::import::WebImportService::new(store);
+            pdf_stage.set("Processing…".to_string());
             match service.import_pdf(
                 bytes,
                 if title.trim().is_empty() {
@@ -125,12 +146,14 @@ pub fn ImportPage() -> impl IntoView {
                 Ok(paper) => {
                     let new_store = service.into_store();
                     app.replace_store(new_store);
+                    pdf_stage.set("Done!".to_string());
                     pdf_loading.set(false);
                     let nav = nav_for_pdf.clone();
                     nav(&format!("/read/{}", paper.id.0), Default::default());
                 }
                 Err(e) => {
                     pdf_loading.set(false);
+                    pdf_stage.set(String::new());
                     pdf_error.set(Some(import_error_message(&e)));
                 }
             }
@@ -197,6 +220,14 @@ pub fn ImportPage() -> impl IntoView {
                         {move || paste_error.get().map(|e| view! {
                             <p class="form-error">{e}</p>
                         })}
+                        {move || {
+                            let stage = paste_stage.get();
+                            if !stage.is_empty() {
+                                view! { <p class="import-stage"><span class="import-spinner"></span>{stage}</p> }.into_any()
+                            } else {
+                                ().into_any()
+                            }
+                        }}
                         <button
                             type="submit"
                             class="btn btn-primary"
@@ -235,6 +266,14 @@ pub fn ImportPage() -> impl IntoView {
                         {move || pdf_error.get().map(|e| view! {
                             <p class="form-error">{e}</p>
                         })}
+                        {move || {
+                            let stage = pdf_stage.get();
+                            if !stage.is_empty() {
+                                view! { <p class="import-stage"><span class="import-spinner"></span>{stage}</p> }.into_any()
+                            } else {
+                                ().into_any()
+                            }
+                        }}
                         <button
                             type="submit"
                             class="btn btn-primary"
@@ -257,4 +296,14 @@ fn import_error_message(e: &WebImportError) -> String {
         }
         WebImportError::StorageFailed => "Failed to save the paper. Please try again.".to_string(),
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn wait_ms(ms: u32) {
+    use wasm_bindgen_futures::JsFuture;
+    let promise = js_sys::Promise::new(&mut |resolve, _| {
+        let window = web_sys::window().unwrap();
+        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32);
+    });
+    let _ = JsFuture::from(promise).await;
 }

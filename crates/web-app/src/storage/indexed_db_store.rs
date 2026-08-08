@@ -8,11 +8,11 @@ use paper_immersive_reader_core::domain::{
     Annotation, AnnotationId, Block, PaperId, ReadingProgress, VocabularyItem,
 };
 
-use super::schema::{AiRecord, Settings, StoredPaper};
+use super::schema::{AiRecord, ReadingStats, Settings, StoredPaper};
 use super::StorageError;
 
 const DB_NAME: &str = "paper-immersive-reader";
-const DB_VERSION: u32 = 1;
+const DB_VERSION: u32 = 2;
 
 fn to_json<T: serde::Serialize>(v: &T) -> Result<JsValue, StorageError> {
     let json = serde_json::to_string(v).map_err(|e| StorageError::IoError(e.to_string()))?;
@@ -54,16 +54,19 @@ fn arr_from_json<T: serde::de::DeserializeOwned>(val: &JsValue) -> Result<Vec<T>
 /// Wrap an IdbRequest into a JS promise and await it, returning raw JsValue.
 async fn await_val(req: &IdbRequest) -> Result<JsValue, StorageError> {
     let promise = js_sys::Promise::new(&mut |resolve, reject| {
-        let on_ok = Closure::wrap(Box::new(move || {
+        // Use `Closure::once_into_js` so the closure is automatically dropped
+        // after it fires once — no `forget()` leak.
+        let on_ok = Closure::once(move || {
             let _ = resolve.call0(&JsValue::null());
-        }) as Box<dyn FnMut()>);
-        let on_err = Closure::wrap(Box::new(move || {
+        });
+        let on_err = Closure::once(move || {
             let _ = reject.call0(&JsValue::null());
-        }) as Box<dyn FnMut()>);
+        });
         req.set_onsuccess(Some(on_ok.as_ref().unchecked_ref()));
         req.set_onerror(Some(on_err.as_ref().unchecked_ref()));
-        on_ok.forget();
-        on_err.forget();
+        // Ownership transferred to JS; JS will drop after one invocation.
+        on_ok.into_js_value();
+        on_err.into_js_value();
     });
     let _ = JsFuture::from(promise)
         .await
@@ -119,6 +122,10 @@ fn create_stores(db: &IdbDatabase) {
         db.create_object_store("settings")
             .expect("create settings store");
     }
+    if !names.contains("reading_stats") {
+        db.create_object_store("reading_stats")
+            .expect("create reading_stats store");
+    }
 }
 
 // --- Public API ---
@@ -146,7 +153,7 @@ impl IndexedDbStore {
             .open_with_u32(DB_NAME, DB_VERSION)
             .map_err(|e| StorageError::IoError(format!("open failed: {:?}", e)))?;
 
-        let on_upgrade = Closure::wrap(Box::new(move |event: web_sys::IdbVersionChangeEvent| {
+        let on_upgrade = Closure::once(move |event: web_sys::IdbVersionChangeEvent| {
             let db: Option<IdbDatabase> = event
                 .target()
                 .and_then(|t| t.dyn_into::<web_sys::IdbOpenDbRequest>().ok())
@@ -155,9 +162,9 @@ impl IndexedDbStore {
             if let Some(db) = db {
                 create_stores(&db);
             }
-        }) as Box<dyn FnMut(_)>);
+        });
         request.set_onupgradeneeded(Some(on_upgrade.as_ref().unchecked_ref()));
-        on_upgrade.forget();
+        on_upgrade.into_js_value();
 
         let db = await_idb_db(request.as_ref()).await?;
         Ok(Self { db })
@@ -217,6 +224,109 @@ impl IndexedDbStore {
             .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
         let val = await_val(&req).await?;
         arr_from_json(&val)
+    }
+
+    /// Delete a paper and all related data (blocks, progress, annotations,
+    /// AI records, reading stats) in a single transaction.
+    pub async fn delete_paper(&self, id: &PaperId) -> Result<(), StorageError> {
+        let stores = [
+            "papers",
+            "blocks",
+            "progress",
+            "annotations",
+            "ai_records",
+            "reading_stats",
+        ];
+        let store_names = js_sys::Array::new();
+        for s in &stores {
+            store_names.push(&JsValue::from_str(s));
+        }
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(&store_names, IdbTransactionMode::Readwrite)
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+
+        // Delete from key-value stores (papers, progress, reading_stats use paper_id as key)
+        for store_name in &["papers", "progress", "reading_stats"] {
+            let store = txn
+                .object_store(store_name)
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let req = store
+                .delete(&JsValue::from_str(&id.0))
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            await_val(&req).await?;
+        }
+
+        // Delete blocks by paper_id index
+        {
+            let store = txn
+                .object_store("blocks")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let idx = store
+                .index("paper_id")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let range = web_sys::IdbKeyRange::only(&JsValue::from_str(&id.0))
+                .map_err(|e| StorageError::IoError(format("{:?}", e)))?;
+            let req = idx
+                .get_all_with_key(&range)
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let val = await_val(&req).await?;
+            let blocks: Vec<Block> = arr_from_json(&val)?;
+            for block in blocks {
+                let req = store
+                    .delete(&JsValue::from_str(&block.id.0))
+                    .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+                await_val(&req).await?;
+            }
+        }
+
+        // Delete annotations by paper_id index
+        {
+            let store = txn
+                .object_store("annotations")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let idx = store
+                .index("paper_id")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let range = web_sys::IdbKeyRange::only(&JsValue::from_str(&id.0))
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let req = idx
+                .get_all_with_key(&range)
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let val = await_val(&req).await?;
+            let anns: Vec<Annotation> = arr_from_json(&val)?;
+            for ann in anns {
+                let req = store
+                    .delete(&JsValue::from_str(&ann.id.0))
+                    .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+                await_val(&req).await?;
+            }
+        }
+
+        // Delete AI records by paper_id index
+        {
+            let store = txn
+                .object_store("ai_records")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let idx = store
+                .index("paper_id")
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let range = web_sys::IdbKeyRange::only(&JsValue::from_str(&id.0))
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let req = idx
+                .get_all_with_key(&range)
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+            let val = await_val(&req).await?;
+            let records: Vec<AiRecord> = arr_from_json(&val)?;
+            for record in records {
+                let req = store
+                    .delete(&JsValue::from_str(&record.id))
+                    .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+                await_val(&req).await?;
+            }
+        }
+
+        Ok(())
     }
 
     // Blocks
@@ -377,9 +487,46 @@ impl IndexedDbStore {
         from_json_opt(&val)
     }
 
+    pub async fn delete_annotation(&self, id: &AnnotationId) -> Result<(), StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("annotations")),
+                IdbTransactionMode::Readwrite,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("annotations")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let req = store
+            .delete(&JsValue::from_str(&id.0))
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        await_val(&req).await?;
+        Ok(())
+    }
+
+    pub async fn update_annotation(&self, annotation: &Annotation) -> Result<(), StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("annotations")),
+                IdbTransactionMode::Readwrite,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("annotations")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let val = to_json(annotation)?;
+        let req = store
+            .put_with_key(&val, &JsValue::from_str(&annotation.id.0))
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        await_val(&req).await?;
+        Ok(())
+    }
+
     // Vocabulary
     pub async fn upsert_vocabulary(&self, item: &VocabularyItem) -> Result<(), StorageError> {
-        let term_lower = item.term.to_lowercase();
+        let term_lower = &item.term_lower;
         let txn = self
             .db
             .transaction_with_str_sequence_and_mode(
@@ -393,7 +540,7 @@ impl IndexedDbStore {
         let idx = store
             .index("term_lower")
             .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
-        let range = web_sys::IdbKeyRange::only(&JsValue::from_str(&term_lower))
+        let range = web_sys::IdbKeyRange::only(&JsValue::from_str(term_lower))
             .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
         let req = idx
             .get(&range)
@@ -401,9 +548,8 @@ impl IndexedDbStore {
         let val = await_val(&req).await?;
 
         if val.is_undefined() || val.is_null() {
-            let mut new_item = item.clone();
-            new_item.term = term_lower;
-            let jv = to_json(&new_item)?;
+            // New entry — preserve original term casing.
+            let jv = to_json(item)?;
             let req = store
                 .put_with_key(&jv, &JsValue::from_str(&item.id.0))
                 .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
@@ -546,21 +692,80 @@ impl IndexedDbStore {
             from_json(&val)
         }
     }
+
+    // Reading stats
+    pub async fn save_reading_stats(&self, stats: &ReadingStats) -> Result<(), StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("reading_stats")),
+                IdbTransactionMode::Readwrite,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("reading_stats")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let val = to_json(stats)?;
+        let req = store
+            .put_with_key(&val, &JsValue::from_str(&stats.paper_id.0))
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        await_val(&req).await?;
+        Ok(())
+    }
+
+    pub async fn load_reading_stats(
+        &self,
+        paper_id: &PaperId,
+    ) -> Result<Option<ReadingStats>, StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("reading_stats")),
+                IdbTransactionMode::Readonly,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("reading_stats")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let req = store
+            .get(&JsValue::from_str(&paper_id.0))
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let val = await_val(&req).await?;
+        from_json_opt(&val)
+    }
+
+    pub async fn list_reading_stats(&self) -> Result<Vec<ReadingStats>, StorageError> {
+        let txn = self
+            .db
+            .transaction_with_str_sequence_and_mode(
+                &js_sys::Array::of1(&JsValue::from_str("reading_stats")),
+                IdbTransactionMode::Readonly,
+            )
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let store = txn
+            .object_store("reading_stats")
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let req = store
+            .get_all()
+            .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
+        let val = await_val(&req).await?;
+        arr_from_json(&val)
+    }
 }
 
 async fn await_idb_db(req: &IdbRequest) -> Result<IdbDatabase, StorageError> {
     let promise = js_sys::Promise::new(&mut |resolve, reject| {
         let req_c = req.clone();
-        let on_ok = Closure::wrap(Box::new(move || {
+        let on_ok = Closure::once(move || {
             let _ = resolve.call0(&JsValue::null());
-        }) as Box<dyn FnMut()>);
-        let on_err = Closure::wrap(Box::new(move || {
+        });
+        let on_err = Closure::once(move || {
             let _ = reject.call0(&JsValue::null());
-        }) as Box<dyn FnMut()>);
+        });
         req_c.set_onsuccess(Some(on_ok.as_ref().unchecked_ref()));
         req_c.set_onerror(Some(on_err.as_ref().unchecked_ref()));
-        on_ok.forget();
-        on_err.forget();
+        on_ok.into_js_value();
+        on_err.into_js_value();
     });
     let _ = JsFuture::from(promise)
         .await

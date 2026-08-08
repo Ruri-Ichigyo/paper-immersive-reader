@@ -10,7 +10,7 @@ pub fn TranslationPanel(
 ) -> impl IntoView {
     view! {
         <div class="translation-panel">
-            <h3>"Translation (" {language} ")"</h3>
+            <h3>"Translation (English → " {language.clone()} ")"</h3>
             {move || {
                 if is_loading {
                     view! { <p class="tl-loading">"Translating..."</p> }.into_any()
@@ -19,8 +19,14 @@ pub fn TranslationPanel(
                 } else if let (Some(ref src), Some(ref tl)) = (&source_text, &translation) {
                     view! {
                         <div class="tl-result">
-                            <p class="tl-source"><em>{src.clone()}</em></p>
-                            <p class="tl-target">{tl.clone()}</p>
+                            <div class="tl-source">
+                                <span class="tl-lang-label">"English"</span>
+                                <p><em>{src.clone()}</em></p>
+                            </div>
+                            <div class="tl-target">
+                                <span class="tl-lang-label">{language.clone()}</span>
+                                <p>{tl.clone()}</p>
+                            </div>
                         </div>
                     }.into_any()
                 } else {

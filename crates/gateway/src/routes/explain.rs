@@ -22,7 +22,7 @@ pub struct ExplainResponse {
 
 pub fn routes<A: AiClient + 'static>(client: Arc<A>) -> Router {
     Router::new()
-        .route("/api/explain", post(explain_handler))
+        .route("/explain", post(explain_handler))
         .with_state(client)
 }
 

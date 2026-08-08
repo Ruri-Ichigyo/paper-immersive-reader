@@ -10,6 +10,7 @@ fn update_vocabulary_preserves_learned_and_note() {
     let item = VocabularyItem {
         id: VocabularyId("vocab-1".to_string()),
         term: "algorithm".to_string(),
+        term_lower: "algorithm".to_string(),
         paper_id_first_seen: PaperId("paper-1".to_string()),
         block_id_first_seen: BlockId("block-1".to_string()),
         lookup_count: 1,
@@ -46,6 +47,7 @@ fn update_vocabulary_toggles_learned_off() {
     let item = VocabularyItem {
         id: VocabularyId("vocab-1".to_string()),
         term: "neural".to_string(),
+        term_lower: "neural".to_string(),
         paper_id_first_seen: PaperId("paper-1".to_string()),
         block_id_first_seen: BlockId("block-1".to_string()),
         lookup_count: 3,

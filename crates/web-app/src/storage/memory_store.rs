@@ -4,7 +4,7 @@ use paper_immersive_reader_core::domain::{
     Annotation, AnnotationId, Block, PaperId, PaperStatus, ReadingProgress, VocabularyItem,
 };
 
-use super::schema::{AiRecord, Settings, StoredPaper};
+use super::schema::{AiRecord, ReadingStats, Settings, StoredPaper};
 use super::{AppStorage, StorageError};
 
 #[derive(Debug, Clone, Default)]
@@ -15,6 +15,7 @@ pub struct InMemoryStore {
     annotations: HashMap<String, Vec<Annotation>>,
     vocabulary: HashMap<String, VocabularyItem>,
     ai_records: HashMap<String, Vec<AiRecord>>,
+    reading_stats: HashMap<String, ReadingStats>,
     settings: Option<Settings>,
 }
 
@@ -51,6 +52,19 @@ impl AppStorage for InMemoryStore {
             }
             None => Err(StorageError::NotFound),
         }
+    }
+
+    fn delete_paper(&mut self, id: &PaperId) -> Result<(), StorageError> {
+        if self.papers.remove(&id.0).is_none() {
+            return Err(StorageError::NotFound);
+        }
+        // Cascade delete related data
+        self.blocks.remove(&id.0);
+        self.progress.remove(&id.0);
+        self.annotations.remove(&id.0);
+        self.ai_records.remove(&id.0);
+        self.reading_stats.remove(&id.0);
+        Ok(())
     }
 
     fn save_blocks(&mut self, blocks: &[Block]) -> Result<(), StorageError> {
@@ -104,6 +118,26 @@ impl AppStorage for InMemoryStore {
         Ok(None)
     }
 
+    fn delete_annotation(&mut self, id: &AnnotationId) -> Result<(), StorageError> {
+        for list in self.annotations.values_mut() {
+            if let Some(pos) = list.iter().position(|a| a.id == *id) {
+                list.remove(pos);
+                return Ok(());
+            }
+        }
+        Err(StorageError::NotFound)
+    }
+
+    fn update_annotation(&mut self, annotation: &Annotation) -> Result<(), StorageError> {
+        for list in self.annotations.values_mut() {
+            if let Some(existing) = list.iter_mut().find(|a| a.id == annotation.id) {
+                *existing = annotation.clone();
+                return Ok(());
+            }
+        }
+        Err(StorageError::NotFound)
+    }
+
     fn upsert_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError> {
         let key = item.term.to_lowercase();
         match self.vocabulary.get_mut(&key) {
@@ -152,6 +186,20 @@ impl AppStorage for InMemoryStore {
 
     fn load_settings(&self) -> Result<Settings, StorageError> {
         Ok(self.settings.clone().unwrap_or_default())
+    }
+
+    fn save_reading_stats(&mut self, stats: &ReadingStats) -> Result<(), StorageError> {
+        self.reading_stats
+            .insert(stats.paper_id.0.clone(), stats.clone());
+        Ok(())
+    }
+
+    fn load_reading_stats(&self, paper_id: &PaperId) -> Result<Option<ReadingStats>, StorageError> {
+        Ok(self.reading_stats.get(&paper_id.0).cloned())
+    }
+
+    fn list_reading_stats(&self) -> Result<Vec<ReadingStats>, StorageError> {
+        Ok(self.reading_stats.values().cloned().collect())
     }
 }
 

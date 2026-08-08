@@ -5,7 +5,7 @@ use leptos::prelude::*;
 use paper_immersive_reader_core::domain::PaperId;
 
 use crate::storage::memory_store::InMemoryStore;
-use crate::storage::schema::Settings;
+use crate::storage::schema::{ReadingStats, Settings};
 use crate::storage::AppStorage;
 
 /// Global app state provided via Leptos context.
@@ -21,6 +21,7 @@ pub struct AppState {
     pub current_paper_id: RwSignal<Option<PaperId>>,
     pub settings: RwSignal<Settings>,
     pub gateway_url: RwSignal<String>,
+    pub gateway_token: RwSignal<Option<String>>,
 }
 
 impl Default for AppState {
@@ -45,6 +46,7 @@ impl AppState {
             current_paper_id: RwSignal::new(None),
             settings: RwSignal::new(Settings::default()),
             gateway_url: RwSignal::new("http://127.0.0.1:3000".to_string()),
+            gateway_token: RwSignal::new(None),
         }
     }
 
@@ -99,6 +101,18 @@ impl AppState {
         self.settings.get()
     }
 
+    pub fn reading_stats(&self, paper_id: &PaperId) -> Option<ReadingStats> {
+        self.data_version.get();
+        self.store
+            .with(|s| s.load_reading_stats(paper_id).unwrap_or(None))
+    }
+
+    pub fn all_reading_stats(&self) -> Vec<ReadingStats> {
+        self.data_version.get();
+        self.store
+            .with(|s| s.list_reading_stats().unwrap_or_default())
+    }
+
     // -- mutation helpers --
 
     pub fn save_paper(&self, paper: &crate::storage::schema::StoredPaper) {
@@ -107,6 +121,14 @@ impl AppState {
         });
         self.notify();
         self.persist_paper(paper.clone());
+    }
+
+    pub fn delete_paper(&self, id: &PaperId) {
+        self.store.update(|s| {
+            s.delete_paper(id).ok();
+        });
+        self.notify();
+        self.persist_delete_paper(id.clone());
     }
 
     pub fn save_blocks(&self, blocks: &[paper_immersive_reader_core::domain::Block]) {
@@ -131,6 +153,22 @@ impl AppState {
         });
         self.notify();
         self.persist_annotation(annotation.clone());
+    }
+
+    pub fn delete_annotation(&self, id: &paper_immersive_reader_core::domain::AnnotationId) {
+        self.store.update(|s| {
+            s.delete_annotation(id).ok();
+        });
+        self.notify();
+        self.persist_delete_annotation(id.clone());
+    }
+
+    pub fn update_annotation(&self, annotation: &paper_immersive_reader_core::domain::Annotation) {
+        self.store.update(|s| {
+            s.update_annotation(annotation).ok();
+        });
+        self.notify();
+        self.persist_update_annotation(annotation.clone());
     }
 
     pub fn upsert_vocabulary(&self, item: &paper_immersive_reader_core::domain::VocabularyItem) {
@@ -162,8 +200,22 @@ impl AppState {
             s.save_settings(settings).ok();
         });
         self.settings.set(settings.clone());
+        // Keep gateway signals in sync so AI requests use updated values immediately.
+        if let Some(ref url) = settings.ai_gateway_url {
+            self.gateway_url.set(url.clone());
+        }
+        self.gateway_token
+            .set(settings.ai_gateway_token_ref.clone());
         self.notify();
         self.persist_settings(settings.clone());
+    }
+
+    pub fn save_reading_stats(&self, stats: &ReadingStats) {
+        self.store.update(|s| {
+            s.save_reading_stats(stats).ok();
+        });
+        self.notify();
+        self.persist_reading_stats(stats.clone());
     }
 
     /// Replace the underlying store entirely (used after WebImportService
@@ -248,6 +300,15 @@ impl AppState {
                         }
                     }
 
+                    // Load reading stats (keyed by paper_id, not nested under papers)
+                    if let Ok(stats) = db.list_reading_stats().await {
+                        for rs in &stats {
+                            app.store.update(|s| {
+                                s.save_reading_stats(rs).ok();
+                            });
+                        }
+                    }
+
                     if let Ok(settings) = db.load_settings().await {
                         app.store.update(|s| {
                             s.save_settings(&settings).ok();
@@ -260,6 +321,8 @@ impl AppState {
                                 app.gateway_url.set(url.clone());
                             }
                         }
+                        // Sync gateway token from persisted settings.
+                        app.gateway_token.set(settings.ai_gateway_token_ref.clone());
                     }
 
                     app.notify();
@@ -289,6 +352,18 @@ impl AppState {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn persist_paper(&self, _paper: crate::storage::schema::StoredPaper) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn persist_delete_paper(&self, id: PaperId) {
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Some(db) = IDB.with(|cell| cell.borrow().as_ref().cloned()) {
+                db.delete_paper(&id).await.ok();
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn persist_delete_paper(&self, _id: PaperId) {}
 
     #[cfg(target_arch = "wasm32")]
     fn persist_blocks(&self, blocks: Vec<paper_immersive_reader_core::domain::Block>) {
@@ -325,6 +400,37 @@ impl AppState {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn persist_annotation(&self, _annotation: paper_immersive_reader_core::domain::Annotation) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn persist_delete_annotation(&self, id: paper_immersive_reader_core::domain::AnnotationId) {
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Some(db) = IDB.with(|cell| cell.borrow().as_ref().cloned()) {
+                db.delete_annotation(&id).await.ok();
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn persist_delete_annotation(&self, _id: paper_immersive_reader_core::domain::AnnotationId) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn persist_update_annotation(
+        &self,
+        annotation: paper_immersive_reader_core::domain::Annotation,
+    ) {
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Some(db) = IDB.with(|cell| cell.borrow().as_ref().cloned()) {
+                db.update_annotation(&annotation).await.ok();
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn persist_update_annotation(
+        &self,
+        _annotation: paper_immersive_reader_core::domain::Annotation,
+    ) {
+    }
 
     #[cfg(target_arch = "wasm32")]
     fn persist_vocabulary(&self, item: paper_immersive_reader_core::domain::VocabularyItem) {
@@ -377,6 +483,18 @@ impl AppState {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn persist_settings(&self, _settings: Settings) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn persist_reading_stats(&self, stats: ReadingStats) {
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Some(db) = IDB.with(|cell| cell.borrow().as_ref().cloned()) {
+                db.save_reading_stats(&stats).await.ok();
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn persist_reading_stats(&self, _stats: ReadingStats) {}
 
     /// Persist all data from a new store to IndexedDB (used after replace_store).
     #[cfg(target_arch = "wasm32")]

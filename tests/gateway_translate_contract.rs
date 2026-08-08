@@ -1,10 +1,16 @@
-use paper_immersive_reader_gateway::routes;
+use paper_immersive_reader_gateway::routes::{self, GatewayState};
 use paper_immersive_reader_gateway::services::ai_client::StubAiClient;
 use reqwest::StatusCode;
 
+fn no_token_state() -> GatewayState {
+    GatewayState {
+        expected_token: None,
+    }
+}
+
 #[tokio::test]
 async fn translate_endpoint_returns_structured_response() {
-    let app = routes::build_router(StubAiClient);
+    let app = routes::build_router(StubAiClient, no_token_state());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
@@ -42,7 +48,7 @@ async fn translate_endpoint_returns_structured_response() {
 
 #[tokio::test]
 async fn translate_endpoint_handles_multi_word_input() {
-    let app = routes::build_router(StubAiClient);
+    let app = routes::build_router(StubAiClient, no_token_state());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 

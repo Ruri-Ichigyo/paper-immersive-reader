@@ -1,6 +1,6 @@
 use paper_immersive_reader_gateway::config::GatewayConfig;
 use paper_immersive_reader_gateway::logging;
-use paper_immersive_reader_gateway::routes;
+use paper_immersive_reader_gateway::routes::{self, GatewayState};
 use paper_immersive_reader_gateway::services::ai_client::{OpenAiClient, StubAiClient};
 
 #[tokio::main]
@@ -10,9 +10,13 @@ async fn main() {
 
     tracing::info!("Starting gateway on {}", config.bind_address);
 
+    let gateway_state = GatewayState {
+        expected_token: config.gateway_token.clone(),
+    };
+
     if config.use_stub {
         tracing::info!("Using StubAiClient (GATEWAY_AI_USE_STUB=true)");
-        let app = routes::build_router(StubAiClient);
+        let app = routes::build_router(StubAiClient, gateway_state);
         let listener = tokio::net::TcpListener::bind(&config.bind_address)
             .await
             .expect("failed to bind");
@@ -33,7 +37,7 @@ async fn main() {
             api_key.to_string(),
             config.ai_model.clone(),
         );
-        let app = routes::build_router(ai_client);
+        let app = routes::build_router(ai_client, gateway_state);
         let listener = tokio::net::TcpListener::bind(&config.bind_address)
             .await
             .expect("failed to bind");

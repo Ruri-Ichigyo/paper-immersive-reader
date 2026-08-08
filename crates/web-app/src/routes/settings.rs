@@ -10,6 +10,7 @@ pub fn SettingsPage() -> impl IntoView {
     // Load current settings
     let language = RwSignal::new(app.settings().explanation_language.clone());
     let gateway_url = RwSignal::new(app.gateway_url.get());
+    let gateway_token = RwSignal::new(app.gateway_token.get().unwrap_or_default());
     let custom_tags = RwSignal::new(app.settings().custom_tags.join(", "));
     let saved_msg = RwSignal::new(Option::<String>::None);
 
@@ -24,15 +25,22 @@ pub fn SettingsPage() -> impl IntoView {
             .collect();
 
         let gw_url = gateway_url.get();
+        let gw_token_raw = gateway_token.get();
+        let gw_token = if gw_token_raw.trim().is_empty() {
+            None
+        } else {
+            Some(gw_token_raw.trim().to_string())
+        };
         let settings = Settings {
             explanation_language: language.get(),
             custom_tags: tags,
             ai_gateway_url: Some(gw_url.clone()),
-            ai_gateway_token_ref: None,
+            ai_gateway_token_ref: gw_token,
         };
 
         app.save_settings(&settings);
         app.gateway_url.set(gw_url);
+        app.gateway_token.set(settings.ai_gateway_token_ref.clone());
         saved_msg.set(Some("Settings saved.".to_string()));
     };
 
@@ -68,6 +76,18 @@ pub fn SettingsPage() -> impl IntoView {
                         on:input=move |e| gateway_url.set(event_target_value(&e))
                     />
                     <p class="form-hint">"The gateway handles AI translation and explanation requests."</p>
+                </div>
+
+                <div class="form-field">
+                    <label>"Gateway Token (optional)"</label>
+                    <input
+                        type="password"
+                        class="text-input"
+                        placeholder="Bearer token for gateway authentication"
+                        prop:value=move || gateway_token.get()
+                        on:input=move |e| gateway_token.set(event_target_value(&e))
+                    />
+                    <p class="form-hint">"If the gateway requires authentication, enter the token here."</p>
                 </div>
 
                 <div class="form-field">

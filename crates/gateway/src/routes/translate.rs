@@ -23,7 +23,7 @@ pub struct TranslateResponse {
 
 pub fn routes<A: AiClient + 'static>(client: Arc<A>) -> Router {
     Router::new()
-        .route("/api/translate", post(translate_handler))
+        .route("/translate", post(translate_handler))
         .with_state(client)
 }
 

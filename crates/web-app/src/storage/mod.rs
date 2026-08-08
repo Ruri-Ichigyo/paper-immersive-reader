@@ -6,7 +6,7 @@ pub mod schema;
 use paper_immersive_reader_core::domain::{
     Annotation, AnnotationId, Block, PaperId, ReadingProgress, VocabularyItem,
 };
-use schema::{AiRecord, Settings, StoredPaper};
+use schema::{AiRecord, ReadingStats, Settings, StoredPaper};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageError {
@@ -25,6 +25,7 @@ pub trait AppStorage {
         id: &PaperId,
         status: paper_immersive_reader_core::domain::PaperStatus,
     ) -> Result<(), StorageError>;
+    fn delete_paper(&mut self, id: &PaperId) -> Result<(), StorageError>;
 
     // Blocks
     fn save_blocks(&mut self, blocks: &[Block]) -> Result<(), StorageError>;
@@ -38,6 +39,8 @@ pub trait AppStorage {
     fn save_annotation(&mut self, annotation: &Annotation) -> Result<(), StorageError>;
     fn load_annotations(&self, paper_id: &PaperId) -> Result<Vec<Annotation>, StorageError>;
     fn load_annotation(&self, id: &AnnotationId) -> Result<Option<Annotation>, StorageError>;
+    fn delete_annotation(&mut self, id: &AnnotationId) -> Result<(), StorageError>;
+    fn update_annotation(&mut self, annotation: &Annotation) -> Result<(), StorageError>;
 
     // Vocabulary
     fn upsert_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError>;
@@ -51,4 +54,9 @@ pub trait AppStorage {
     // Settings
     fn save_settings(&mut self, settings: &Settings) -> Result<(), StorageError>;
     fn load_settings(&self) -> Result<Settings, StorageError>;
+
+    // Reading statistics
+    fn save_reading_stats(&mut self, stats: &ReadingStats) -> Result<(), StorageError>;
+    fn load_reading_stats(&self, paper_id: &PaperId) -> Result<Option<ReadingStats>, StorageError>;
+    fn list_reading_stats(&self) -> Result<Vec<ReadingStats>, StorageError>;
 }

@@ -20,6 +20,7 @@ fn vocabulary_upsert_increments_lookup_count() {
     let item = VocabularyItem {
         id: VocabularyId("v-1".to_string()),
         term: "epistemology".to_string(),
+        term_lower: "epistemology".to_string(),
         paper_id_first_seen: paper_id.clone(),
         block_id_first_seen: block_id.clone(),
         lookup_count: 1,
@@ -34,6 +35,7 @@ fn vocabulary_upsert_increments_lookup_count() {
     let item2 = VocabularyItem {
         id: VocabularyId("v-2".to_string()),
         term: "epistemology".to_string(),
+        term_lower: "epistemology".to_string(),
         paper_id_first_seen: PaperId("p-2".to_string()),
         block_id_first_seen: BlockId("b-3".to_string()),
         lookup_count: 1,

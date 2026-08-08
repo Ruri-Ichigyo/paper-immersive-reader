@@ -9,6 +9,9 @@ pub struct VocabularyId(pub String);
 pub struct VocabularyItem {
     pub id: VocabularyId,
     pub term: String,
+    /// Lowercase version of `term`, used for case-insensitive deduplication
+    /// in IndexedDB index lookups.  Populated automatically on creation.
+    pub term_lower: String,
     pub paper_id_first_seen: PaperId,
     pub block_id_first_seen: BlockId,
     pub lookup_count: u32,

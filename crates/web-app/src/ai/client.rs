@@ -156,14 +156,17 @@ fn current_time_ms() -> u64 {
 #[derive(Debug, Clone)]
 pub struct GatewayAiClient {
     gateway_url: String,
+    /// Optional Bearer token sent as `Authorization` header on every request.
+    token: Option<String>,
     is_online: bool,
 }
 
 #[cfg(target_arch = "wasm32")]
 impl GatewayAiClient {
-    pub fn new(gateway_url: String) -> Self {
+    pub fn new(gateway_url: String, token: Option<String>) -> Self {
         Self {
             gateway_url: gateway_url.trim_end_matches('/').to_string(),
+            token,
             is_online: true,
         }
     }
@@ -171,6 +174,7 @@ impl GatewayAiClient {
     pub fn new_offline() -> Self {
         Self {
             gateway_url: String::new(),
+            token: None,
             is_online: false,
         }
     }
@@ -208,6 +212,15 @@ impl GatewayAiClient {
         Err("GatewayAiClient: use explain_async in WASM".into())
     }
 
+    /// Build a POST request with optional Authorization header.
+    fn post(&self, url: &str) -> Result<gloo_net::http::RequestBuilder, String> {
+        let mut req = gloo_net::http::Request::post(url).header("Content-Type", "application/json");
+        if let Some(ref token) = self.token {
+            req = req.header("Authorization", &format!("Bearer {}", token));
+        }
+        Ok(req)
+    }
+
     /// Async translate — calls POST /api/translate on the gateway.
     pub async fn translate_async(
         &self,
@@ -221,12 +234,16 @@ impl GatewayAiClient {
             "context": context,
         });
 
-        let resp = gloo_net::http::Request::post(&format!("{}/api/translate", self.gateway_url))
+        let req = self
+            .post(&format!("{}/api/translate", self.gateway_url))?
             .json(&body)
-            .map_err(|e| e.to_string())?
-            .send()
-            .await
             .map_err(|e| e.to_string())?;
+
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+
+        if resp.status() == 401 {
+            return Err("unauthorized — check gateway token in Settings".to_string());
+        }
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
         json["translation"]
@@ -250,12 +267,16 @@ impl GatewayAiClient {
             "context": context,
         });
 
-        let resp = gloo_net::http::Request::post(&format!("{}/api/explain", self.gateway_url))
+        let req = self
+            .post(&format!("{}/api/explain", self.gateway_url))?
             .json(&body)
-            .map_err(|e| e.to_string())?
-            .send()
-            .await
             .map_err(|e| e.to_string())?;
+
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+
+        if resp.status() == 401 {
+            return Err("unauthorized — check gateway token in Settings".to_string());
+        }
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
 

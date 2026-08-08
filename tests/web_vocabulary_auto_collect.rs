@@ -21,6 +21,7 @@ fn lookup_auto_collects_and_merges_vocabulary() {
     let item1 = VocabularyItem {
         id: VocabularyId("v-100".to_string()),
         term: "hermeneutics".to_string(),
+        term_lower: "hermeneutics".to_string(),
         paper_id_first_seen: paper_id.clone(),
         block_id_first_seen: block_id.clone(),
         lookup_count: 1,
@@ -35,6 +36,7 @@ fn lookup_auto_collects_and_merges_vocabulary() {
     let item2 = VocabularyItem {
         id: VocabularyId("v-200".to_string()),
         term: "hermeneutics".to_string(),
+        term_lower: "hermeneutics".to_string(),
         paper_id_first_seen: PaperId("p-other".to_string()),
         block_id_first_seen: BlockId("b-other".to_string()),
         lookup_count: 1,
@@ -76,6 +78,7 @@ fn vocabulary_list_shows_all_collected_terms() {
         let item = VocabularyItem {
             id: VocabularyId(format!("v-{}", i)),
             term: term.to_string(),
+            term_lower: term.to_lowercase(),
             paper_id_first_seen: PaperId("p-vlist".to_string()),
             block_id_first_seen: BlockId("b-vlist".to_string()),
             lookup_count: 1,

@@ -1,7 +1,16 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 /// Current time in milliseconds since the Unix epoch.
+///
+/// On `wasm32` we use `js_sys::Date::now()` because `std::time::SystemTime`
+/// is not supported on `wasm32-unknown-unknown` and returns `Err` (yielding 0
+/// via `unwrap_or_default`).
+#[cfg(target_arch = "wasm32")]
 pub fn current_time_ms() -> u64 {
+    js_sys::Date::now() as u64
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn current_time_ms() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()

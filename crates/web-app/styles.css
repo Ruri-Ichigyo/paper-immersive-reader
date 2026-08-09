@@ -613,6 +613,21 @@ body {
     margin-bottom: 1.5rem;
 }
 
+/* Sidebar collapse */
+.reading-layout.sidebar-collapsed {
+    grid-template-columns: 1fr;
+}
+
+.reading-layout.sidebar-collapsed .reading-sidebar {
+    display: none;
+}
+
+.btn-sidebar-toggle {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .reading-layout {
@@ -758,11 +773,48 @@ body.reading-fullscreen-active .app-nav {
     width: 14px;
     height: 14px;
     border: 2px solid var(--border);
-    border-top-color: var(--primary);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: import-spin 0.6s linear infinite;
 }
 
 @keyframes import-spin {
     to { transform: rotate(360deg); }
+}
+
+/* Annotations browser page */
+.route-annotations .annotation-list {
+    max-width: 800px;
+}
+
+.ann-paper-title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.ann-card-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.5rem 0;
+    flex-wrap: wrap;
+}
+
+.ann-type-badge {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.4rem;
+    background: var(--bg-sidebar);
+    border-radius: 3px;
+    color: var(--text-secondary);
+}
+
+.btn-sm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn-export {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
 }

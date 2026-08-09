@@ -36,6 +36,7 @@ pub fn SettingsPage() -> impl IntoView {
             custom_tags: tags,
             ai_gateway_url: Some(gw_url.clone()),
             ai_gateway_token_ref: gw_token,
+            sidebar_collapsed: app.settings().sidebar_collapsed,
         };
 
         app.save_settings(&settings);

@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use paper_immersive_reader_core::domain::{PaperId, PaperSourceType, PaperStatus};
+use wasm_bindgen::{JsCast, JsValue};
 
 use crate::state::use_app_state;
 use crate::util::format_relative_time;
@@ -116,6 +117,21 @@ pub fn LibraryPage() -> impl IntoView {
                                             "Read ->"
                                         </button>
                                         <button
+                                            class="btn btn-secondary btn-export"
+                                            title="Export paper data"
+                                            on:click={
+                                                let pid_for_export = paper_id.clone();
+                                                let app = app;
+                                                move |_| {
+                                                    if let Some(bundle) = app.export_paper(&pid_for_export) {
+                                                        trigger_download(&bundle.filename(), &bundle.to_json().unwrap_or_default());
+                                                    }
+                                                }
+                                            }
+                                        >
+                                            "Export"
+                                        </button>
+                                        <button
                                             class="btn btn-danger btn-delete-paper"
                                             title="Delete paper"
                                             on:click={
@@ -181,4 +197,35 @@ fn status_label(st: &PaperStatus) -> &'static str {
         PaperStatus::ReadyOcr => "Ready (OCR)",
         PaperStatus::Failed => "Failed",
     }
+}
+
+/// Create a JSON file download in the browser via Blob + object URL.
+fn trigger_download(filename: &str, content: &str) {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Some(document) = window.document() else {
+        return;
+    };
+    let parts = js_sys::Array::of1(&JsValue::from_str(content));
+    let blob = match web_sys::Blob::new_with_str_sequence(&parts) {
+        Ok(b) => b,
+        Err(_) => return,
+    };
+    let url = match web_sys::Url::create_object_url_with_blob(&blob) {
+        Ok(u) => u,
+        Err(_) => return,
+    };
+    let anchor: web_sys::Element = match document.create_element("a") {
+        Ok(el) => el,
+        Err(_) => return,
+    };
+    let anchor: web_sys::HtmlAnchorElement = match anchor.dyn_into() {
+        Ok(a) => a,
+        Err(_) => return,
+    };
+    anchor.set_href(&url);
+    anchor.set_download(filename);
+    anchor.click();
+    web_sys::Url::revoke_object_url(&url).ok();
 }

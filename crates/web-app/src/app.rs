@@ -3,8 +3,8 @@ use leptos_router::components::{Redirect, Route, Router, Routes};
 use leptos_router::path;
 
 use crate::routes::{
-    import::ImportPage, library::LibraryPage, read::ReadPage, settings::SettingsPage,
-    vocabulary::VocabularyPage,
+    annotations::AnnotationsPage, import::ImportPage, library::LibraryPage, read::ReadPage,
+    settings::SettingsPage, vocabulary::VocabularyPage,
 };
 use crate::state::AppState;
 
@@ -20,6 +20,7 @@ pub fn App() -> impl IntoView {
         <nav class="app-nav">
             <a href="/library" class="nav-link">"📚 Library"</a>
             <a href="/import" class="nav-link">"📥 Import"</a>
+            <a href="/annotations" class="nav-link">"✏ Annotations"</a>
             <a href="/vocabulary" class="nav-link">"📖 Vocabulary"</a>
             <a href="/settings" class="nav-link">"⚙ Settings"</a>
         </nav>
@@ -30,6 +31,7 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/library") view=LibraryPage />
                     <Route path=path!("/import") view=ImportPage />
                     <Route path=path!("/read/:paper_id") view=ReadPage />
+                    <Route path=path!("/annotations") view=AnnotationsPage />
                     <Route path=path!("/vocabulary") view=VocabularyPage />
                     <Route path=path!("/settings") view=SettingsPage />
                 </Routes>

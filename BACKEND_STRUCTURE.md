@@ -1,4 +1,4 @@
-# BACKEND_STRUCTURE — Paper Immersive Reader
+# BACKEND_STRUCTURE - Paper Immersive Reader
 
 ## 0. Purpose
 This document defines the backend/service structure and data model for a **local-first, web-first** academic paper reading tool.
@@ -15,21 +15,23 @@ This implies a backend is **optional** for core reading, but **recommended** for
 ## 1. System Topology
 
 ### 1.1 Components
-1. **Web App (PWA)**
-   - Owns: reading UX, local DB, import orchestration, annotation UX, export, offline mode.
-   - Runs: PDF text extraction in Web Workers; may run limited OCR in-browser.
+1. **Web App (Leptos CSR)**
+   - Owns: reading UX, local DB (IndexedDB), import orchestration, annotation UX, export, offline mode.
+   - Runs: PDF text extraction via pdf.js in the browser.
+   - Compiled to WASM (`wasm32-unknown-unknown`) via Trunk.
 
-2. **Sync/Integration Gateway (optional but recommended)**
-   - Owns: S3 credentials handling, S3 object operations, Zotero API calls, AI API key protection (if using a vendor LLM), heavy OCR jobs.
-   - Exposes: HTTPS API for the web app.
-   - Must be deployable by the user (self-host) to match “user-managed data”.
+2. **AI Gateway (optional but recommended)**
+   - Owns: AI API key protection, translation/explanation proxying.
+   - Future: S3 credentials handling, Zotero API calls, heavy OCR jobs.
+   - Built with **Axum** (Rust), exposes HTTPS API for the web app.
+   - Must be deployable by the user (self-host) to match "user-managed data".
 
 3. **External Services**
-   - S3-compatible storage
-   - Zotero Web API
-   - AI model API (if enabled)
+   - AI model API (OpenAI-compatible, if enabled)
+   - S3-compatible storage (Phase 5+)
+   - Zotero Web API (Phase 6+)
 
-### 1.2 Why a Gateway is recommended (to eliminate ambiguity)
+### 1.2 Why a Gateway is recommended
 Even though requirements mention user AK/SK, a pure browser implementation has practical and security issues:
 - Long-lived AK/SK in browser storage is risky.
 - S3 CORS + credential exposure is messy.
@@ -41,165 +43,132 @@ Even though requirements mention user AK/SK, a pure browser implementation has p
 
 ### 2.1 Web App Responsibilities
 - Create and manage **Paper** objects locally.
-- Persist:
+- Persist in IndexedDB:
   - parsed text blocks
   - reading progress
   - annotations
   - vocabulary
   - AI records (responses)
-  - settings (tags, languages)
+  - settings (tags, languages, gateway URL/token)
+  - reading stats (time tracking)
 - Import pipeline orchestration:
-  - PDF.js extraction
+  - pdf.js text extraction
   - header/footer removal heuristics
   - paragraph segmentation
-  - AI chunking call (if enabled)
-  - decide OCR fallback
-- Export generation (local): original + annotations + summaries + vocabulary
-- Sync client:
-  - diff local entities
-  - upload/download bundles via Gateway
-  - conflict presentation UI
+  - (future) AI chunking call
+  - (future) OCR fallback
+- Export generation (Phase 2+): original + annotations + summaries + vocabulary
+- (future) Sync client: diff local entities, upload/download bundles via Gateway
 
 ### 2.2 Gateway Responsibilities
-- S3 sync operations:
+- **AI proxy (implemented):**
+  - hides model API keys
+  - enforces optional token authentication
+  - structured prompt management
+- **S3 sync operations (Phase 5+ - not implemented):**
   - object upload/download/list
   - version metadata management
-  - optional multipart upload
-- Zotero bi-directional sync:
-  - version-based pull (since library version)
+- **Zotero bi-directional sync (Phase 6+ - not implemented):**
+  - version-based pull
   - push local annotations/notes
-  - attachment handling (PDF)
-  - mapping between local IDs and Zotero item keys
-- AI proxy (recommended):
-  - hides model API keys
-  - enforces rate limits
-  - prompt versioning
-- OCR/Heavy processing jobs (recommended):
-  - accept page images or PDF
-  - run OCR pipeline
-  - return extracted text + confidence + word boxes (optional)
+- **OCR/Heavy processing jobs (Phase 4+ - not implemented in web):**
+  - CLI-side OCR via PaddleOCR exists
+  - Web-side OCR integration deferred
 
 ## 3. Gateway Deployment Model
 
 ### 3.1 Modes
-- **Mode A (Local-only)**: no gateway, no sync, no AI.
-- **Mode B (Gateway enabled)**: user provides a gateway URL; web app uses it for:
-  - S3 sync
-  - Zotero sync
-  - AI
-  - OCR
+- **Mode A (Local-only)**: no gateway, no AI. All reading, annotation, and vocabulary features work offline.
+- **Mode B (Gateway enabled)**: user provides a gateway URL in Settings; web app uses it for AI translation/explanation.
 
 ### 3.2 Authentication
 Since this is a personal tool (not multi-tenant by default):
-- simplest: gateway uses a single **API token** (static) configured in the client.
-- optional: device-level tokens per installation.
+- Gateway uses a single **static token** (`GATEWAY_TOKEN` env var).
+- Web app sends `Authorization: Bearer <token>` header when token is configured in Settings.
+- If `GATEWAY_TOKEN` is not set, the gateway accepts all requests without authentication.
+- Implemented as `require_token` axum middleware on all `/api/*` routes.
 
 ## 4. Data Model (Canonical Entities)
 
-This section is the “source of truth” for what must be synced (FR-39).
+This section is the "source of truth" for what must be synced (FR-39).
 
 ### 4.1 Entity IDs
-- Use **UUIDv7** (sortable) for client-generated IDs.
-- Include `deviceId` for sync metadata.
+- UUID v4 short segments (e.g., `paper-a1b2c3d4`, `block-e5f6g7h8`)
+- Generated via `uuid::Uuid::new_v4()` with prefix
 
 ### 4.2 Core Entities
 
 #### Paper
-- `paperId`
-- `title`
-- `sourceType`: pdf | paste | url | doi | zotero
-- `sourceRef`: path/url/doi/zoteroKey
-- `importedAt`
-- `status`: CREATED | INGESTING | READY_TEXT | READY_OCR | FAILED
-- `parseVersion`
-- `language`: default `en`
+- `paperId` (PaperId)
+- `title`: Option<String>
+- `sourceType`: Pdf | Paste | Url | Doi | Zotero
+- `sourceRef`: Option<String>
+- `status`: Created | Ingesting | ReadyText | ReadyOcr | Failed
+- `parseVersion`: u32
 
-#### PaperAsset
-- `assetId`
-- `paperId`
-- `type`: pdf
-- `contentHash` (SHA-256)
-- `byteSize`
-- `storageRef`:
-  - local: indexeddb blob key or file-handle token
-  - remote: s3 object key
-
-#### ExtractedPage (optional but recommended)
-Store raw extraction results to support re-processing and debugging.
-- `paperId`
-- `pageIndex`
-- `extractionMethod`: native | ocr
-- `rawItems` (if native): PDF.js text items + transforms
-- `text`
-- `qualityScore`
-- `layoutHints`: multi-column detection results
+#### StoredPaper (web-app layer)
+- `paper`: Paper
+- `created_at_ms`: u64
+- `updated_at_ms`: u64
 
 #### Block
-A reading unit used in immersive reading.
-- `blockId`
-- `paperId`
-- `orderIndex`
-- `text`
-- `blockHash`
-- `sourceSpan`:
-  - page references (optional)
-  - offsets into canonical text
+- `blockId` (BlockId)
+- `paperId` (PaperId)
+- `orderIndex`: u32
+- `text`: String
 
 #### ReadingProgress
-- `paperId`
-- `currentBlockIndex`
-- `currentBlockId`
-- `progressPercent`
-- `lastUpdatedAt`
+- `paperId` (PaperId)
+- `currentBlockIndex`: u32
+- `currentBlockId`: Option<BlockId>
+- `updated_at_ms`: u64
 
 #### Annotation
-Anchoring must survive re-segmentation and OCR errors.
-- `annotationId`
-- `paperId`
-- `blockId` (hint)
-- `type`: highlight | underline | note
-- `tags`: string[]
-- `quote`: exact text
-- `prefix` / `suffix` (short context)
-- `startOffset` / `endOffset` (best-effort)
-- `createdAt`
-- `updatedAt`
-- `anchoringStatus`: anchored | unanchored
+- `annotationId` (AnnotationId)
+- `paperId` (PaperId)
+- `blockId` (BlockId)
+- `annotationType`: Highlight | Underline | Note
+- `quote`: String (exact text)
+- `prefix` / `suffix`: Option<String> (up to 50 chars context)
+- `startOffset` / `endOffset`: Option<u32>
+- `note`: Option<String>
+- `tags`: Vec<String>
+- `anchoringStatus`: Anchored | Unanchored
 
 #### VocabularyItem
-- `vocabId`
-- `term`
-- `paperIdFirstSeen`
-- `blockIdFirstSeen`
-- `lookupCount`
-- `firstSeenAt`
-- `lastSeenAt`
-- `note` (optional)
-- `learned`: boolean
+- `vocabId` (VocabularyId)
+- `term`: String (original casing preserved)
+- `term_lower`: String (lowercase index key)
+- `paperIdFirstSeen` (PaperId)
+- `blockIdFirstSeen` (BlockId)
+- `lookupCount`: u32
+- `firstSeenAtMs` / `lastSeenAtMs`: u64
+- `note`: Option<String>
+- `learned`: bool
 
-#### AIRecord
-- `aiRecordId`
-- `paperId`
-- `blockId` (optional)
-- `type`: term_explain | sentence_explain | paragraph_summary | full_summary | structure | qa | notes | keywords
-- `input` (selected text + context)
-- `output` (structured content)
-- `model` (string)
-- `promptVersion`
-- `createdAt`
+#### AiRecord
+- `id`: String
+- `paperId` (PaperId)
+- `blockId` (BlockId)
+- `recordType`: String ("translate", "explain_term", "explain_sentence", "translate_block")
+- `input`: String
+- `output`: String
+- `language`: String
+- `created_at_ms`: u64
 
-#### TagDefinition
-- `tagId`
-- `name`
-- `color` (optional)
-- `isDefault` boolean
+#### ReadingStats
+- `paperId` (PaperId)
+- `total_reading_ms`: u64
+- `session_started_ms`: Option<u64>
+- `session_count`: u32
 
 #### Settings
-- `aiExplanationLanguage`
-- `syncConfigProfileId`
-- UI prefs (panel collapsed, shortcuts)
+- `explanation_language`: String ("en", "zh", "ja", "ko")
+- `custom_tags`: Vec<String>
+- `ai_gateway_url`: Option<String>
+- `ai_gateway_token_ref`: Option<String>
 
-### 4.3 Sync Metadata Entity
+### 4.3 Sync Metadata Entity (Phase 5+ - not yet implemented)
 Each synced entity must have:
 - `entityId`
 - `entityType`
@@ -208,7 +177,7 @@ Each synced entity must have:
 - `deviceId`
 - `contentHash`
 
-## 5. S3-Compatible Sync Design
+## 5. S3-Compatible Sync Design (Phase 5+ - not yet implemented)
 
 ### 5.1 Storage Layout in Bucket
 Object keys (suggested):
@@ -233,16 +202,12 @@ A small index to allow incremental sync.
 - Annotation/Vocab/AIRecord: set union by ID.
 - Settings: last-write-wins by `updatedAt`.
 
-If same entity ID changed on two devices:
-- keep both versions by generating a conflict copy (preferred) OR
-- prompt the user.
-
-## 6. Zotero Bi-directional Sync
+## 6. Zotero Bi-directional Sync (Phase 6+ - not yet implemented)
 
 ### 6.1 Canonical Mapping
 Maintain a mapping table in the gateway DB:
 - `paperId` ↔ `zoteroItemKey`
-- `annotationId` ↔ `zoteroAnnotationKey` (if using Zotero PDF annotation items)
+- `annotationId` ↔ `zoteroAnnotationKey`
 - `assetId` ↔ `zoteroAttachmentKey`
 
 ### 6.2 Pull Flow
@@ -254,75 +219,56 @@ Maintain a mapping table in the gateway DB:
 - Convert local annotations/notes to Zotero annotation item schema.
 - Use optimistic concurrency via Zotero item versions.
 
-### 6.4 Conflicts
-- Metadata: Zotero is authoritative.
-- Our reading progress: local is authoritative.
-- Annotations/notes: merge union; flag duplicates.
+## 7. OCR & PDF Processing (Phase 4+ - CLI implemented, web not yet)
 
-## 7. OCR & PDF Processing Backend Jobs
+### 7.1 CLI OCR (implemented)
+- `crates/cli`: `ocr run-next` and `ocr run <job-id>`
+- `ScriptPaddleOcrRunner`: calls external `scripts/run_paddle_ocr.sh`
+- `LocalOcrExecutor`: resolves managed PDF assets, runs OCR, persists results
+- SQLite persistence for OCR jobs and results
 
-### 7.1 Job Types
-- `pdf_extract_text`
-- `ocr_page`
-- `ocr_document`
-- `chunk_blocks_ai`
-- `sync_s3_upload`
-- `sync_s3_download`
-- `sync_zotero_pull`
-- `sync_zotero_push`
-
-### 7.2 Job State
-- `PENDING` → `RUNNING` → (`SUCCEEDED` | `FAILED`)
-- retry policy with exponential backoff
-
-### 7.3 OCR Output Schema
-Return:
-- extracted text
-- confidence
-- optional word boxes
-
-Store OCR engine version in outputs for reproducibility.
+### 7.2 Web OCR (not yet implemented)
+- Future: browser-side Tesseract.js or gateway-side PaddleOCR
+- Progressive OCR for large documents
 
 ## 8. Gateway API (HTTP)
 
 This API is intentionally small and stable.
 
-### 8.1 Health
+### 8.1 Health ✅ Implemented
 - `GET /health`
+- Response: `200 OK` + `{"status": "ok"}`
 
-### 8.2 Sync (S3)
+### 8.2 AI ✅ Implemented
+- `POST /api/translate`
+  - Request body: `{ "text": String, "target_language": String, "context": Option<String> }`
+  - Response: `{ "translation": String, "source_text": String, "target_language": String, "normalized_term": Option<String> }`
+- `POST /api/explain`
+  - Request body: `{ "text": String, "explanation_type": String, "language": String, "context": Option<String> }`
+  - Response: `{ "explanation": String, "background": Option<String>, "caution": Option<String> }`
+- Both routes protected by `require_token` middleware when `GATEWAY_TOKEN` is set.
+
+### 8.3 Sync - S3 (Phase 5+ - not implemented)
 - `POST /sync/push`
-  - input: batch of entities + assets metadata
-  - output: applied versions + errors
 - `POST /sync/pull`
-  - input: lastSyncCursor
-  - output: changed entities list + signed download URLs
 
-### 8.3 Assets
-- `POST /assets/upload/init` (optional multipart)
-- `POST /assets/upload/complete`
-- `GET /assets/download?assetId=...`
+### 8.4 Assets (Phase 5+ - not implemented)
+- `POST /assets/upload/init`
+- `GET /assets/download`
 
-### 8.4 Zotero
+### 8.5 Zotero (Phase 6+ - not implemented)
 - `POST /zotero/connect`
 - `POST /zotero/pull`
 - `POST /zotero/push`
 
-### 8.5 AI
-- `POST /ai/explain-term`
-- `POST /ai/explain-sentence`
-- `POST /ai/summary`
-- `POST /ai/structure`
-- `POST /ai/qa`
-
-### 8.6 OCR
+### 8.6 OCR (Phase 4+ - not implemented in web)
 - `POST /ocr/document`
 - `POST /ocr/page`
 
-## 9. Gateway Internal Storage
+## 9. Gateway Internal Storage (Phase 5+ - not yet implemented)
 
 ### 9.1 Database (Gateway)
-Gateway DB stores:
+Gateway DB will store:
 - connector configs (S3, Zotero)
 - mapping tables
 - job records
@@ -330,22 +276,18 @@ Gateway DB stores:
 
 It should **not** be treated as the canonical store of reading data.
 
-### 9.2 Secrets Handling
+### 9.2 Secrets Handling (not yet implemented)
 - Store S3 AK/SK and Zotero API key in gateway-side secrets store.
 - Never return raw secrets to the browser.
 
 ## 10. Observability
-- Structured logs per request + per job.
-- Import/OCR metrics:
-  - OCR fallback rate
-  - average OCR time per page
-- Sync metrics:
-  - entities pushed/pulled
-  - conflict count
+- Structured `tracing` logs per request in gateway.
+- Browser console warnings for IndexedDB unavailability.
+- Import progress stages surfaced in UI.
 
 ## 11. Edge Cases to Encode in Implementation
-- Multi-column PDF reading order issues: store raw PDF.js text items.
-- Garbled fonts/unicode errors: trigger OCR.
-- Unanchored annotations: display separately and support re-anchoring.
+- Multi-column PDF reading order issues: store raw pdf.js text items.
+- Garbled fonts/unicode errors: trigger OCR (Phase 4+).
+- Unanchored annotations: display with `Unanchored` status and support re-anchoring.
 - Very large scanned PDFs: progressive OCR (page-on-demand).
-- Zotero rate limits: respect Retry-After; batch requests.
+- Zotero rate limits: respect Retry-After; batch requests (Phase 6+).

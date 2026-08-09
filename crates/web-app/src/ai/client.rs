@@ -141,11 +141,7 @@ impl<S: AppStorage> WebAiClient<S> {
 }
 
 fn current_time_ms() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
+    crate::util::current_time_ms()
 }
 
 // --- Gateway HTTP client (browser / WASM) ---
@@ -245,6 +241,12 @@ impl GatewayAiClient {
             return Err("unauthorized — check gateway token in Settings".to_string());
         }
 
+        if resp.status() < 200 || resp.status() >= 300 {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("gateway error {}: {}", status, body));
+        }
+
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
         json["translation"]
             .as_str()
@@ -276,6 +278,12 @@ impl GatewayAiClient {
 
         if resp.status() == 401 {
             return Err("unauthorized — check gateway token in Settings".to_string());
+        }
+
+        if resp.status() < 200 || resp.status() >= 300 {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("gateway error {}: {}", status, body));
         }
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;

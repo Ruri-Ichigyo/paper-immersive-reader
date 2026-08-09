@@ -34,11 +34,8 @@ impl GatewayConfig {
         if self.use_stub {
             return Err("stub mode".to_string());
         }
-        self.ai_api_key
-            .as_deref()
-            .or(self.gateway_token.as_deref())
-            .ok_or_else(|| {
-                "GATEWAY_AI_API_KEY or GATEWAY_TOKEN is required (or set GATEWAY_AI_USE_STUB=true for dev)".to_string()
-            })
+        self.ai_api_key.as_deref().ok_or_else(|| {
+            "GATEWAY_AI_API_KEY is required (or set GATEWAY_AI_USE_STUB=true for dev)".to_string()
+        })
     }
 }

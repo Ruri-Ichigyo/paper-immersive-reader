@@ -55,6 +55,9 @@ pub fn ReadPage() -> impl IntoView {
     // Fullscreen state
     let is_fullscreen = RwSignal::new(false);
 
+    // Sidebar collapse state (persisted in Settings)
+    let sidebar_collapsed = RwSignal::new(app.settings().sidebar_collapsed);
+
     const DEFAULT_TAGS: &[&str] = &["重点", "疑问", "术语", "结论", "复习"];
 
     // --- Reading session time tracking (FR-32) ---
@@ -579,7 +582,12 @@ pub fn ReadPage() -> impl IntoView {
                     let fs = is_fullscreen;
                     view! {
                         <div class=move || {
-                            if fs.get() { "reading-layout reading-fullscreen" } else { "reading-layout" }
+                            let base = if fs.get() { "reading-layout reading-fullscreen" } else { "reading-layout" };
+                            if sidebar_collapsed.get() {
+                                format!("{} sidebar-collapsed", base)
+                            } else {
+                                base.to_string()
+                            }
                         }>
                             // Main reading column
                             <div class="reading-main">
@@ -596,6 +604,18 @@ pub fn ReadPage() -> impl IntoView {
                                             disabled=move || translation_loading.get()
                                         >
                                             "Translate Block"
+                                        </button>
+                                        <button
+                                            class="btn btn-secondary btn-sidebar-toggle"
+                                            on:click=move |_| {
+                                                let collapsed = !sidebar_collapsed.get();
+                                                sidebar_collapsed.set(collapsed);
+                                                let mut s = app.settings();
+                                                s.sidebar_collapsed = collapsed;
+                                                app.save_settings(&s);
+                                            }
+                                        >
+                                            {move || if sidebar_collapsed.get() { "Show Panel" } else { "Hide Panel" }}
                                         </button>
                                         <button
                                             class="btn btn-secondary btn-fullscreen"

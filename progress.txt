@@ -288,3 +288,60 @@ Next:
 - Added tests: web_vocabulary_update.rs (2 tests), web_import_header_footer_filter.rs (2 tests)
 - Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
   `cargo test --workspace` (93 tests), and `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+
+2026-08-09
+- Product acceptance review and optimization plan v2 execution
+- Fixed 3 blocking issues found during review:
+  - indexed_db_store.rs: format! macro missing ! (WASM compile failure)
+  - styles.css: var(--primary) -> var(--accent) (undefined CSS variable)
+  - import.rs: Closure::forget() -> Closure::once (memory leak)
+- Batch 1 (P1 documentation alignment): all 4 docs rewritten
+  - TECH_STACK.md: rewritten from Next.js/React/Fastify to actual Rust/Leptos/Axum stack
+  - BACKEND_STRUCTURE.md: API endpoints updated to actual /api/translate + /api/explain, health marked implemented
+  - IMPLEMENTATION_PLAN.md: acceptance checklist updated with [x]/[ ] reflecting actual state
+  - FRONTEND_GUIDELINES.md: rewritten from React/Next.js to actual Leptos component structure
+- Batch 2 (P1 robustness): all 4 tasks done
+  - InMemoryStore::save_annotation changed to upsert (replace if same ID, push if new)
+  - InMemoryStore::upsert_vocabulary/update_vocabulary now use term_lower field instead of term.to_lowercase()
+  - Added tests/gateway_token_auth.rs: 7 tests covering token middleware + health endpoint
+- Batch 3 (P2 features): all 3 tasks done
+  - Export functionality (FR-35/36): ExportBundle struct + JSON download via Blob/URL
+  - Annotations browser page (/annotations): cross-paper search, filter by type/tag, jump to reading
+  - Sidebar collapse: toggle button in reading toolbar, persisted in Settings.sidebar_collapsed
+- Added web-sys features: HtmlAnchorElement, Url
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+  `cargo test --workspace` (109 tests), and `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+- Added tests for new features:
+  - tests/web_annotation_upsert.rs: 3 tests verifying save_annotation upsert semantics
+  - tests/web_export.rs: 5 tests verifying export bundle serialization, filename sanitization, AI record exclusion, and AppState integration
+- Batch 4 (P2 browser verification): server-level smoke tests passed
+  - Gateway: boots, /health returns 200, /api/translate and /api/explain return correct stub responses
+  - Gateway token auth: no token -> 401, wrong token -> 401, correct token -> 200, /health unaffected by token
+  - Web app: trunk build succeeds, serves HTML with WASM bundle + CSS + pdf.js assets
+  - pdf.js assets downloaded and placed (v3.11.174 from jsDelivr CDN)
+  - Both services run simultaneously without port conflicts
+  - Manual browser interaction testing deferred (requires interactive browser session)
+- Verified `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+  `cargo test --workspace` (117 tests), and `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+
+2026-08-09
+- Product acceptance review v2 and auto-fix
+- All 4 gates passed before review: fmt, clippy, test (117 tests), wasm build
+- P1 code bug fixes:
+  - util.rs: current_time_ms() now uses js_sys::Date::now() on wasm32 (was returning 0)
+  - memory_store.rs: save_ai_record changed to upsert semantics (was push-only, mismatched IndexedDB put)
+  - memory_store.rs, import/mod.rs, reading/session.rs, ai/client.rs: replaced local current_time_ms
+    duplicates with crate::util::current_time_ms (all had same wasm32 bug)
+  - gateway config.rs: require_ai_key no longer falls back to GATEWAY_TOKEN as AI API key (wrong cross-purpose)
+  - ai/client.rs: GatewayAiClient translate_async and explain_async now check for non-200/non-401 HTTP
+    status codes (was producing confusing JSON parse errors on 500 etc.)
+- P2 code quality:
+  - Removed duplicate compute_anchors from annotations/anchors.rs (identical to selection::compute_anchors)
+  - annotations/mod.rs now imports compute_anchors from crate::selection
+- P3 documentation:
+  - FRONTEND_GUIDELINES.md: added /annotations route and Annotations nav item, updated directory structure
+  - IMPLEMENTATION_PLAN.md: marked export as [x] in §6.5, added annotation search/filter and export to §6.4
+  - OPTIMIZATION_PLAN.md: added completion status update
+- Added test: tests/web_ai_record_upsert.rs (2 tests for save_ai_record upsert semantics)
+- Verified cargo fmt --check, cargo clippy --workspace --all-targets --all-features -- -D warnings,
+  cargo test --workspace (119 tests), cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features

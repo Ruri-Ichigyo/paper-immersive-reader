@@ -92,10 +92,12 @@ impl AppStorage for InMemoryStore {
 
     fn save_annotation(&mut self, annotation: &Annotation) -> Result<(), StorageError> {
         let key = annotation.paper_id.0.clone();
-        self.annotations
-            .entry(key)
-            .or_default()
-            .push(annotation.clone());
+        let list = self.annotations.entry(key).or_default();
+        if let Some(existing) = list.iter_mut().find(|a| a.id == annotation.id) {
+            *existing = annotation.clone();
+        } else {
+            list.push(annotation.clone());
+        }
         Ok(())
     }
 
@@ -139,7 +141,7 @@ impl AppStorage for InMemoryStore {
     }
 
     fn upsert_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError> {
-        let key = item.term.to_lowercase();
+        let key = item.term_lower.clone();
         match self.vocabulary.get_mut(&key) {
             Some(existing) => {
                 existing.lookup_count += 1;
@@ -156,7 +158,7 @@ impl AppStorage for InMemoryStore {
     }
 
     fn update_vocabulary(&mut self, item: &VocabularyItem) -> Result<(), StorageError> {
-        let key = item.term.to_lowercase();
+        let key = item.term_lower.clone();
         self.vocabulary.insert(key, item.clone());
         Ok(())
     }
@@ -167,7 +169,12 @@ impl AppStorage for InMemoryStore {
 
     fn save_ai_record(&mut self, record: &AiRecord) -> Result<(), StorageError> {
         let key = record.paper_id.0.clone();
-        self.ai_records.entry(key).or_default().push(record.clone());
+        let list = self.ai_records.entry(key).or_default();
+        if let Some(existing) = list.iter_mut().find(|r| r.id == record.id) {
+            *existing = record.clone();
+        } else {
+            list.push(record.clone());
+        }
         Ok(())
     }
 
@@ -204,9 +211,5 @@ impl AppStorage for InMemoryStore {
 }
 
 fn current_time_ms() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
+    crate::util::current_time_ms()
 }

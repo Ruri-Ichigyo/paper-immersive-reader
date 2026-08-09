@@ -173,15 +173,15 @@ pub fn ImportPage() -> impl IntoView {
                 }
             };
             let reader_clone = reader.clone();
-            let onload = Closure::wrap(Box::new(move |_| {
+            let onload = Closure::once(move |_: wasm_bindgen::JsValue| {
                 if let Ok(array_buffer) = reader_clone.result() {
                     let array = js_sys::Uint8Array::new(&array_buffer);
                     let bytes = array.to_vec();
                     pdf_bytes.set(bytes);
                 }
-            }) as Box<dyn FnMut(wasm_bindgen::JsValue)>);
+            });
             reader.set_onload(Some(onload.as_ref().unchecked_ref()));
-            onload.forget();
+            onload.into_js_value();
             if reader.read_as_array_buffer(&file).is_err() {
                 pdf_error.set(Some("Failed to read file.".to_string()));
             }

@@ -1,4 +1,4 @@
-# TECH_STACK — Paper Immersive Reader
+# TECH_STACK - Paper Immersive Reader
 
 ## 0. Technical Principles
 This stack must satisfy the product constraints:
@@ -10,286 +10,239 @@ This stack must satisfy the product constraints:
 
 ## 1. Architecture Decision Summary
 
-### 1.1 Recommended Architecture
-**Split architecture:**
-- **Frontend Web App**: local-first PWA responsible for reading experience, local storage, parsing orchestration, annotations, export, and initiating sync.
-- **Optional Sync/Integration Gateway**: separate deployable backend service for S3 and Zotero credentials, sync operations, AI proxying if needed, and heavy async jobs when browser-side execution is not sufficient.
+### 1.1 Actual Architecture
+**Split architecture (Cargo-native):**
+- **Web App**: local-first Leptos CSR application compiled to WASM, responsible for reading experience, local storage, parsing orchestration, annotations, and initiating AI requests.
+- **Optional AI Gateway**: thin Rust HTTP gateway (Axum) for AI API key protection, translation/explanation proxying, and future heavy async jobs.
+- **CLI**: Rust CLI for OCR job execution and local management (persistence via SQLite).
+
+The browser is the source of truth for reading data. The gateway is optional for core reading and required only for AI-backed actions.
 
 ### 1.2 Why this architecture
 A pure browser-only solution is not enough for all requirements because:
-- S3 AK/SK should not live permanently in browser storage if avoidable.
-- Zotero bi-directional sync and attachment transfer are operationally easier through a backend/gateway.
-- OCR and PDF processing may be too heavy or inconsistent purely in-browser for large files.
+- AI API keys should not live permanently in browser storage.
+- Future S3/Zotero sync and OCR operations are operationally easier through a backend/gateway.
 - Local-first remains intact because local app remains the source of day-to-day reading state.
 
 ## 2. Frontend Stack
 
 ### 2.1 Framework
-- **Next.js 15+ (App Router)**
-- **TypeScript**
+- **Leptos 0.7** (CSR mode)
+- **Rust** compiled to `wasm32-unknown-unknown`
 
 Rationale:
-- strong ecosystem
-- route-based app structure
-- future SSR/edge flexibility for landing/auth/setup pages if needed
-- easy packaging as a PWA shell
+- single-language full-stack (Rust for both frontend and gateway)
+- fine-grained reactivity via signals
+- strong type safety across the entire stack
+- no JS build toolchain beyond Trunk
 
 ### 2.2 UI Layer
-- **React 19**
-- **Tailwind CSS**
-- **shadcn/ui** for primitives
-- **Lucide** for icons
-
-Rationale:
-- fast composition for app-like UI
-- readable design system control
-- high-quality primitives without locking into a monolithic component library
+- Hand-written CSS (`crates/web-app/styles.css`) with CSS custom properties (variables) for theming
+- No CSS framework (Tailwind/shadcn not used)
+- Responsive grid layout for reading (1fr 400px sidebar)
 
 ### 2.3 State Management
-Use layered state intentionally:
-- **Zustand** for app/session state:
-  - current paper
-  - reading block index
-  - panel state
-  - transient selection state
-- **TanStack Query** for async remote/gateway calls:
-  - AI explanations
-  - Zotero sync status
-  - S3 sync jobs
-- local derived selectors for UI responsiveness
+Layered state via Leptos primitives:
+- **`AppState`** struct provided via Leptos context (`provide_context` / `expect_context`)
+- **`RwSignal<T>`** for reactive state:
+  - `store: RwSignal<InMemoryStore>` - interior mutability for all domain data
+  - `data_version: RwSignal<u64>` - increment-after-mutation pattern for reactivity
+  - `settings: RwSignal<Settings>` - UI preferences
+  - `gateway_url: RwSignal<String>` / `gateway_token: RwSignal<Option<String>>` - runtime AI config
+- **`Callback<T>`** for event handlers passed to child components
 
-### 2.4 Forms & Validation
-- **React Hook Form**
-- **Zod**
-
-For settings pages, import flows, S3 config, export options.
+### 2.4 Routing
+- **`leptos_router` 0.7** for client-side routing
+- Routes: `/library`, `/import`, `/read/:paper_id`, `/vocabulary`, `/settings`
 
 ## 3. Local-First Persistence
 
 ### 3.1 Local Database
-- **IndexedDB** as the primary local datastore
-- **Dexie.js** as the IndexedDB wrapper
+- **IndexedDB** as the primary local datastore (browser)
+- Direct `web_sys::IdbDatabase` API (no Dexie wrapper)
+- `IndexedDbStore` (cfg-gated for `wasm32`) provides async CRUD mirroring the `AppStorage` trait
+- `InMemoryStore` used for native testing and as an in-memory cache on wasm32
+- DB name: `paper-immersive-reader`, version 2
 
-Reason:
-- browser-native durable storage
-- supports offline use
-- suitable for structured paper, annotation, vocab, and AI record data
-- much better fit than localStorage for large PDFs and structured documents
+### 3.2 Object Stores
+Eight IndexedDB object stores:
+- `papers` (key: paper_id)
+- `blocks` (key: block_id, index: paper_id)
+- `progress` (key: paper_id)
+- `annotations` (key: annotation_id, index: paper_id)
+- `vocabulary` (key: vocab_id, index: term_lower)
+- `ai_records` (key: record_id, index: paper_id)
+- `settings` (key: "app_settings")
+- `reading_stats` (key: paper_id)
 
-### 3.2 File Storage Strategy
-Store original PDF assets in one of:
-- IndexedDB Blob storage for smaller-to-medium files
-- or File System Access API as an optional power-user mode on supported browsers
+### 3.3 Persistence Strategy
+- On startup (`init_persistence`): open IndexedDB, merge all data into `InMemoryStore`
+- After each mutation: `spawn_local` async write to IndexedDB
+- Merge (not replace) on load to avoid losing data written during async load
 
-Recommended default:
-- use **IndexedDB Blobs** for portability
+## 4. PDF Parsing and Text Extraction
 
-### 3.3 Search Index
-- **MiniSearch** or **FlexSearch** in-browser for local search over:
-  - paper title
-  - parsed text blocks
-  - annotations
-  - vocabulary
+### 4.1 PDF Text Extraction
+- **pdf.js** (vendored at `crates/web-app/assets/pdfjs/`) loaded via `<script>` in `index.html`
+- `WasmPdfBridge` calls global `pdfjs_extract_text(Uint8Array) -> Promise<string|null>` via `wasm-bindgen` extern
+- `StubPdfBridge` for native testing (returns canned text or error)
 
-## 4. PDF Parsing and OCR
+### 4.2 Text Cleanup Pipeline
+1. Extract text via pdf.js (pages joined by `\n\n`)
+2. `filter_repeated_lines`: detect header/footer lines appearing as first/last line of >50% of pages (3+ pages required)
+3. `segment_text`: split on `\n\n`; fallback to single-newline split for lines >20 chars
+4. Generate `Block` objects with UUID-based short IDs
 
-### 4.1 PDF Rendering / Text Layer
-- **pdf.js** for rendering PDF pages and accessing text items
+### 4.3 OCR (Phase 4 - not yet in web app)
+- CLI-side: `ScriptPaddleOcrRunner` + `LocalOcrExecutor` via `crates/cli`
+- Web-side OCR integration deferred to Phase 4
 
-### 4.2 Text Extraction Pipeline
-Recommended layered strategy:
-1. Try structured text extraction using **pdf.js** text content
-2. Run cleanup heuristics:
-   - repeated line detection (header/footer)
-   - paragraph merging
-   - hyphenation cleanup
-3. If extracted text quality is below threshold, mark as OCR candidate
-
-### 4.3 OCR
-Recommended options:
-- **Browser-first fallback:** Tesseract.js for smaller/local OCR experiments or limited pages
-- **Production-recommended:** OCR via **Gateway worker** using:
-  - PaddleOCR / Tesseract / cloud OCR adapter depending deployment choice
-
-Decision:
-- In docs, standardize on **Gateway OCR service** as primary production path.
-- Browser OCR may exist as fallback or dev-mode option but should not be the primary path for large scanned PDFs.
-
-### 4.4 Segmentation / Chunking
-- deterministic first-pass sentence segmentation using a text splitter library or custom NLP rules
-- AI-assisted adaptive chunking service to merge sentences into reader-friendly blocks
-
-Rule:
-- Store both:
-  - canonical extracted text
-  - derived block segmentation version
-
-This avoids losing re-segmentation options later.
+### 4.4 Segmentation
+- Deterministic first-pass paragraph segmentation (double-newline split)
+- Single-newline fallback for PDFs without clear paragraph breaks
+- AI adaptive chunking (FR-12) deferred to later phase
 
 ## 5. Annotation & Text Anchoring
 
 ### 5.1 Anchor Model
-Use a hybrid anchor model for resilience:
-- `paperId`
-- `blockId`
-- `textQuote` exact quote
-- `prefix` / `suffix` context
-- `startOffset` / `endOffset`
-- optional PDF page reference if available
+Hybrid anchor model for resilience:
+- `paper_id` / `block_id`
+- `quote`: exact selected text
+- `prefix` / `suffix`: up to 50 chars of context on each side
+- `start_offset` / `end_offset`: character offsets (best-effort)
+- `anchoring_status`: `Anchored` | `Unanchored`
 
-Reason:
-Text extraction and re-segmentation may change offsets; quote-based anchoring improves restoration.
+### 5.2 Offset Resolution (`find_offsets`)
+4-level fallback:
+1. Exact substring match
+2. First 20 chars of selection as prefix search
+3. First word (≥3 chars) of selection
+4. None -> `(0, 0)` + `Unanchored` status
 
-### 5.2 Annotation Rendering
-- custom annotation layer over rendered reading blocks
-- PDF raw page annotation is not the primary UX in MVP; immersive reading blocks are primary
+### 5.3 Inline Decoration
+`BlockContent` component splits block text into annotated and unannotated segments, wrapping ranges in `<mark>`, `<u>`, or `<span>` elements based on annotation type.
 
 ## 6. AI Integration Stack
 
 ### 6.1 AI Call Boundary
-AI requests should go through a backend/gateway in production.
-Reasons:
+AI requests go through the gateway in production:
 - API key protection
-- rate limiting
-- auditing / prompt versioning
-- easier model switching
+- prompt versioning
+- structured JSON response parsing
+- fallback to `StubAiClient` for development (`GATEWAY_AI_USE_STUB=true`)
 
-### 6.2 AI Features Covered
-- term explanation
-- sentence explanation
-- paragraph summary
-- full paper summary
-- structure extraction
-- Q&A
-- note generation
-- keyword extraction
+### 6.2 Gateway AI Endpoints
+- `POST /api/translate` (body: text, target_language, context?)
+- `POST /api/explain` (body: text, explanation_type: "term"|"sentence", language, context?)
 
-### 6.3 Prompting Rules
-- input should include selected text + minimal context window
-- output schema should be structured JSON when possible
-- responses must separate:
-  - direct explanation
-  - optional background knowledge
-  - confidence or caution note for ambiguous scientific claims
+### 6.3 Browser-Side AI Client
+- `GatewayAiClient` (cfg-gated `wasm32`): async HTTP via `gloo-net::http::Request`
+- Optional `Authorization: Bearer <token>` header when gateway token is configured
+- 401 responses produce user-facing error: "unauthorized - check gateway token in Settings"
 
-## 7. Sync and Integration Stack
+### 6.4 Prompting Rules
+- Translation: system prompt instructs "return only the translation"
+- Explanation: system prompt requests structured JSON with `explanation`, optional `background`, optional `caution`
+- `parse_explain_json` strips markdown code fences and falls back to raw text on parse failure
 
-### 7.1 S3-Compatible Sync
-Recommended approach:
-- Gateway service uses **AWS SDK v3** with S3-compatible configuration
-- store serialized snapshots + incremental entity bundles
-- client uploads/downloads through Gateway APIs, not directly with raw AK/SK where possible
+## 7. Sync and Integration Stack (Phase 5+ - not yet implemented)
 
-### 7.2 Sync Model
-Use **entity-based sync** rather than whole-database overwrite.
-Sync entities:
-- papers
-- paper assets metadata
-- progress
-- annotations
-- favorites
-- vocabulary
-- AI records
-- settings profiles
+### 7.1 S3-Compatible Sync (planned)
+- Gateway service with S3-compatible configuration
+- entity-based sync (papers, progress, annotations, vocabulary, AI records)
+- manifest-based incremental sync
 
-### 7.3 Zotero Integration
-Recommended approach:
-- Gateway uses Zotero Web API for metadata and note sync
-- attachment/PDF handling may require import/export pipeline depending deployment mode
-- maintain external mapping table:
-  - `paperId <-> zoteroItemKey`
-  - `annotationId <-> zoteroAnnotationKey` if applicable
+### 7.2 Zotero Integration (planned)
+- Gateway uses Zotero Web API
+- mapping table: paperId ↔ zoteroItemKey
 
 ## 8. Backend / Gateway Stack
 
-### 8.1 Recommended Backend Framework
-- **Fastify** or **NestJS** on Node.js
+### 8.1 Framework
+- **Axum 0.8** + **tokio** (async runtime)
+- **reqwest** for upstream AI API calls
 
-Recommendation:
-- **Fastify + TypeScript** for lower overhead and clear service boundaries.
+### 8.2 Configuration
+`GatewayConfig::from_env()` reads:
+- `GATEWAY_BIND_ADDRESS` (default: `127.0.0.1:3000`)
+- `GATEWAY_AI_API_KEY` / `AI_API_KEY` (required unless stub)
+- `GATEWAY_AI_BASE_URL` (default: `https://api.openai.com/v1`)
+- `GATEWAY_AI_MODEL` (default: `gpt-3.5-turbo`)
+- `GATEWAY_AI_USE_STUB` (default: `false`)
+- `GATEWAY_TOKEN` (optional shared secret)
 
-### 8.2 Background Jobs
-- **BullMQ** with Redis for OCR / sync / import jobs if self-hosted infra exists
-- If avoiding Redis early, start with in-process queue for single-user deployment and graduate later
+### 8.3 Authentication
+- `require_token` axum middleware: if `GATEWAY_TOKEN` env var is set, validates `Authorization: Bearer <token>` header on all `/api/*` routes
+- If not set, all requests pass through
 
-### 8.3 Database (Gateway Side)
-Gateway does not need to be the system of record for reading data, but it needs operational storage for:
-- sync jobs
-- connector configs
-- mapping tables
-- audit logs
-
-Recommended:
-- **PostgreSQL**
-- **Prisma** ORM
+### 8.4 Logging
+- `tracing` + `tracing-subscriber` with JSON formatted logs to `logs/YYYY-MM-DD_HHMMSS.log`
 
 ## 9. Packaging and Deployment
 
 ### 9.1 Web App
-- deploy on Vercel / self-hosted Node environment
-- enable PWA using `next-pwa` or equivalent
+- **Trunk** as the build tool: `trunk serve crates/web-app/index.html --open`
+- WASM build: `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
+- `index.html` loads pdf.js assets and registers `pdfjs_extract_text` bridge function
 
-### 9.2 Sync Gateway
-- deploy separately on Docker-compatible environment
-- expose HTTPS endpoint
+### 9.2 Gateway
+- `cargo run -p paper-immersive-reader-gateway`
+- Scripts: `scripts/run_gateway.sh` (auto-sources `.env`), `scripts/run_web_app.sh`
 
-### 9.3 Desktop Extension Path
-When expanding to desktop:
-- reuse frontend app in **Tauri** shell
-- gain stronger local file access and background processing
+### 9.3 Future Desktop Extension
+- Tauri wrapping the same Leptos frontend (planned)
 
 ## 10. Testing Stack
 
-### 10.1 Frontend
-- **Vitest** for unit tests
-- **React Testing Library** for component behavior
-- **Playwright** for end-to-end flows
+### 10.1 Compilation Gates
+- `cargo fmt --check`
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+- `cargo test --workspace`
+- WASM build: `cargo build -p paper-immersive-reader-web-app --target wasm32-unknown-unknown --no-default-features`
 
-### 10.2 Backend
-- **Vitest** or **Jest**
-- **Supertest** for API tests
+### 10.2 Test Organization
+- Integration tests in `tests/` directory (73 test files)
+- Native tests use `InMemoryStore` + `StubPdfBridge` + `WebAiClient`
+- WASM-specific code cfg-gated, tested via compilation
 
-### 10.3 Parsing Quality Tests
-Maintain fixture corpus of PDFs:
-- normal text PDFs
-- two-column academic PDFs
-- image/scanned PDFs
-- PDFs with repeated headers/footers
-- malformed PDFs
+### 10.3 PDF Fixture Corpus
+- Real PDF fixtures under `tests/` for embedded-text and OCR-boundary scenarios
 
 ## 11. Observability
-- structured logs in gateway
-- client error capture for import/sync failures
-- per-step import telemetry:
-  - extract success rate
-  - OCR fallback rate
-  - parse quality score
+- Structured `tracing` logs in gateway
+- Browser console warnings for IndexedDB unavailability
+- Per-step import progress UI ("Extracting text…" -> "Cleaning headers…" -> "Segmenting blocks…")
 
 ## 12. Versioning Decisions
-- schema version for local DB
-- segmentation version for block generation
-- prompt version for AI-derived content
-- sync protocol version for gateway payloads
+- IndexedDB schema version: 2 (with `onupgradeneeded` migration)
+- `parse_version: 1` on Paper (reserved for future re-segmentation)
+- Block IDs: UUID v4 short segments (`block-xxxxxxxx`)
 
-## 13. Final Recommended Stack Summary
+## 13. Final Actual Stack Summary
 
-### Frontend
-- Next.js + TypeScript
-- React + Tailwind + shadcn/ui
-- Zustand + TanStack Query
-- Dexie / IndexedDB
-- pdf.js
-- React Hook Form + Zod
-- MiniSearch/FlexSearch
-- Vitest + RTL + Playwright
+### Frontend (Web App)
+- Rust + Leptos 0.7 (CSR) + wasm-bindgen + web_sys
+- leptos_router 0.7 for client-side routing
+- IndexedDB via web_sys (8 object stores, DB v2)
+- pdf.js via wasm-bindgen extern
+- gloo-net for gateway HTTP calls
+- Hand-written CSS with CSS variables
+- Trunk for dev server and build
 
-### Gateway / Backend
-- Node.js + Fastify + TypeScript
-- PostgreSQL + Prisma
-- BullMQ + Redis (when async load grows)
-- AWS SDK v3 (S3-compatible)
-- Zotero Web API integration
-- OCR worker pipeline
+### Gateway
+- Rust + Axum 0.8 + tokio + reqwest
+- OpenAI-compatible chat completions API
+- StubAiClient for development
+- Token middleware (optional Bearer auth)
+- tracing for structured logging
 
-### Future Desktop
-- Tauri wrapping the same frontend
+### CLI
+- Rust CLI for OCR job execution
+- SQLite persistence (`database/app-state.db`)
+- JSON-to-SQLite auto-migration
+- ScriptPaddleOcrRunner for OCR execution
+
+### Shared Crates
+- `crates/core`: domain types (Paper, Block, Annotation, VocabularyItem, ReadingProgress, OcrJob)
+- `crates/application`: import orchestration, OCR executor, persistence contracts
+- `crates/importing`: PDF extraction, text normalization, segmentation

@@ -253,6 +253,27 @@ impl AppState {
         self.store.get()
     }
 
+    /// Build an export bundle for a paper (FR-35/FR-36).
+    /// Includes: paper, blocks, annotations, vocabulary, reading stats.
+    /// Excludes: AI records (translations, explanations, Q&A logs).
+    pub fn export_paper(&self, paper_id: &PaperId) -> Option<crate::export::ExportBundle> {
+        self.data_version.get();
+        let store = self.store.with(|s| s.clone());
+        let paper = store.load_paper(paper_id).ok()??;
+        let blocks = store.load_blocks(paper_id).unwrap_or_default();
+        let annotations = store.load_annotations(paper_id).unwrap_or_default();
+        let reading_stats = store.load_reading_stats(paper_id).unwrap_or(None);
+        // Export all vocabulary (not just this paper's) as per PRD FR-35.
+        let vocabulary = store.list_vocabulary().unwrap_or_default();
+        Some(crate::export::ExportBundle {
+            paper,
+            blocks,
+            annotations,
+            vocabulary,
+            reading_stats,
+        })
+    }
+
     // -- IndexedDB persistence (wasm32 only) --
 
     /// Open IndexedDB and merge persisted data into the in-memory store.

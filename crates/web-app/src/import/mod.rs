@@ -6,7 +6,7 @@ use paper_immersive_reader_core::domain::{
 
 use crate::storage::schema::StoredPaper;
 use crate::storage::AppStorage;
-use crate::util::short_id;
+use crate::util::{current_time_ms, short_id};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WebImportError {
@@ -31,14 +31,6 @@ mod native_import_bridge {
             }
         }
     }
-}
-
-fn current_time_ms() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
 }
 
 pub struct WebImportService<S: AppStorage> {

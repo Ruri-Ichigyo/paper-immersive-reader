@@ -1,5 +1,3 @@
-pub mod anchors;
-
 use paper_immersive_reader_core::domain::{
     AnchoringStatus, Annotation, AnnotationId, AnnotationType, BlockId, PaperId,
 };
@@ -8,7 +6,7 @@ use crate::selection::TextSelection;
 use crate::storage::AppStorage;
 use crate::util::short_id;
 
-use self::anchors::compute_anchors;
+use crate::selection::compute_anchors;
 
 #[derive(Debug, Clone)]
 pub struct AnnotationInput {

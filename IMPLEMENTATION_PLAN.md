@@ -363,44 +363,57 @@ Success means:
 ## 6. Acceptance Checklist by Requirement Cluster
 
 ### 6.1 Import & Parsing
-- [ ] local PDF import works
-- [ ] paste text import works
-- [ ] URL/DOI import fallback path defined
-- [ ] main text extraction exists
-- [ ] header/footer cleanup exists
-- [ ] segmentation exists
-- [ ] OCR exists (Phase 4)
+- [x] local PDF import works
+- [x] paste text import works
+- [ ] URL/DOI import fallback path defined (P1)
+- [x] main text extraction exists (pdf.js via WasmPdfBridge)
+- [x] header/footer cleanup exists (`filter_repeated_lines`)
+- [x] segmentation exists (`segment_text` with double-newline + single-newline fallback)
+- [ ] OCR exists in web app (Phase 4; CLI-side OCR implemented via PaddleOCR)
 
 ### 6.2 Reading
-- [ ] dedicated reading page
-- [ ] fullscreen mode
-- [ ] progress display
-- [ ] next block
-- [ ] adaptive chunking
+- [x] dedicated reading page (`/read/:paper_id`)
+- [x] fullscreen mode (CSS `reading-fullscreen` class + body class toggle)
+- [x] progress display (block index + percentage + progress bar)
+- [x] next block (button + keyboard: ArrowRight/PageDown/Space)
+- [ ] adaptive chunking (FR-12; current: rule-based segmentation, AI chunking deferred)
 
 ### 6.3 Translation & AI
-- [ ] selection translation
-- [ ] paragraph translation
-- [ ] bilingual display
-- [ ] term explanation
-- [ ] explanation language switching
-- [ ] sentence explanation
-- [ ] summary / structure / Q&A / notes / analysis (P1)
+- [x] selection translation (word/sentence via `GatewayAiClient::translate_async`)
+- [x] paragraph translation ("Translate Block" button)
+- [x] bilingual display (flex row: English left, Chinese right; responsive stack on mobile)
+- [x] term explanation (`GatewayAiClient::explain_async` with explanation_type="term")
+- [x] explanation language switching (Settings: en/zh/ja/ko)
+- [x] sentence explanation (explanation_type="sentence")
+- [ ] summary / structure / Q&A / notes / analysis (Phase 3, P1)
 
 ### 6.4 Annotation & Vocabulary
-- [ ] highlight / underline / note / tag
-- [ ] default tags
-- [ ] custom tags
-- [ ] auto vocabulary collection
-- [ ] vocabulary management
-- [ ] restore last location
-- [ ] reading time statistics
+- [x] highlight / underline / note / tag
+- [x] default tags (重点 / 疑问 / 术语 / 结论 / 复习)
+- [x] custom tags (Settings → comma-separated)
+- [x] auto vocabulary collection (single-word lookup → `upsert_vocabulary`)
+- [x] vocabulary management (search, filter learned/learning, mark learned, add/edit notes, source link)
+- [x] restore last location (`load_progress` → `current_block_index` on mount)
+- [x] reading time statistics (`ReadingStats`: total_reading_ms, session_count, per-session tracking)
+- [x] annotation delete (delete button + IndexedDB sync)
+- [x] annotation edit (inline note editor in AnnotationRenderer)
+- [x] annotation search/filter (cross-paper browser at `/annotations`: search by text/note, filter by type/tag)
+- [x] export (JSON download from Library: paper + blocks + annotations + vocabulary, excludes AI records)
 
 ### 6.5 Export / Sync / Zotero
-- [ ] export defaults match PRD
-- [ ] S3 sync all content
-- [ ] no extra encryption before upload
-- [ ] Zotero metadata + PDF + annotations/notes bi-directional sync
+- [x] export defaults match PRD (Phase 2+; implemented: ExportBundle with paper/blocks/annotations/vocabulary/reading_stats, excludes ai_records)
+- [ ] S3 sync all content (Phase 5)
+- [ ] no extra encryption before upload (Phase 5)
+- [ ] Zotero metadata + PDF + annotations/notes bi-directional sync (Phase 6)
+
+### 6.6 Additional Implemented Features (beyond original checklist)
+- [x] paper deletion with cascade (library → confirm dialog → delete paper + blocks + progress + annotations + ai_records + reading_stats)
+- [x] vocabulary source link (jump back to paper where word was first seen)
+- [x] import progress stages ("Extracting text…" → "Cleaning headers…" → "Segmenting blocks…" → "Done")
+- [x] keyboard navigation (ArrowRight/PageDown/Space=next, ArrowLeft/PageUp=prev, F=fullscreen)
+- [x] gateway token authentication (optional Bearer token middleware)
+- [x] library paper card: reading progress bar + percentage + last read time + reading duration + session count
+- [x] IndexedDB Closure leak fix (`Closure::once_into_js` instead of `forget()`)
 
 ## 7. Delivery Risks and Responses
 

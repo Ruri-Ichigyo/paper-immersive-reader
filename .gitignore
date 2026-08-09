@@ -34,3 +34,7 @@ logs/
 
 # Test results
 test-results/
+
+# Vendored pdf.js binaries (download separately, see assets/pdfjs/README.md)
+crates/web-app/assets/pdfjs/pdf.min.js
+crates/web-app/assets/pdfjs/pdf.worker.min.js

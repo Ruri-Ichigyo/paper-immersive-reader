@@ -266,7 +266,7 @@ impl IndexedDbStore {
                 .index("paper_id")
                 .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
             let range = web_sys::IdbKeyRange::only(&JsValue::from_str(&id.0))
-                .map_err(|e| StorageError::IoError(format("{:?}", e)))?;
+                .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;
             let req = idx
                 .get_all_with_key(&range)
                 .map_err(|e| StorageError::IoError(format!("{:?}", e)))?;

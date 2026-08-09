@@ -49,6 +49,7 @@ pub struct Settings {
     pub custom_tags: Vec<String>,
     pub ai_gateway_url: Option<String>,
     pub ai_gateway_token_ref: Option<String>,
+    pub sidebar_collapsed: bool,
 }
 
 impl Default for Settings {
@@ -58,6 +59,7 @@ impl Default for Settings {
             custom_tags: Vec::new(),
             ai_gateway_url: None,
             ai_gateway_token_ref: None,
+            sidebar_collapsed: false,
         }
     }
 }

@@ -19,12 +19,14 @@ wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
   "Window", "Document", "Element", "HtmlElement",
   "HtmlTextAreaElement", "HtmlInputElement", "HtmlSelectElement",
+  "HtmlAnchorElement",
   "File", "FileList", "FileReader", "Blob",
   "Selection", "Range", "StaticRange",
   "IdbDatabase", "IdbFactory", "IdbOpenDbRequest", "IdbRequest",
   "IdbTransaction", "IdbTransactionMode", "IdbObjectStore",
   "IdbIndex", "IdbKeyRange", "IdbCursorWithValue",
   "IdbVersionChangeEvent", "DomStringList",
+  "Url",
 ] }
 js-sys = "0.3"
 wasm-bindgen-futures = "0.4"

@@ -8,34 +8,41 @@ pub fn SelectionPopover(
     on_action: Callback<(SelectionAction, TextSelection)>,
     on_dismiss: Callback<()>,
 ) -> impl IntoView {
+    // Wrap in a div that stops mouseup propagation so clicking inside the
+    // popover does not clear the underlying text selection.
     view! {
+        <div
+            class="selection-popover-wrapper"
+            on:mouseup=|e| e.stop_propagation()
+            on:mousedown=|e| e.stop_propagation()
+        >
             {move || {
                 if let Some(ref sel) = selection {
                     view! {
                         <div class="selection-popover">
                             <button on:click={
                                 let sel = sel.clone();
-    move |_| on_action.run((SelectionAction::Annotate, sel.clone()))
+                                move |_| on_action.run((SelectionAction::Annotate, sel.clone()))
                             }>
-                                "Annotate"
+                                "📝 Note"
                             </button>
                             <button on:click={
                                 let sel = sel.clone();
-    move |_| on_action.run((SelectionAction::Translate, sel.clone()))
+                                move |_| on_action.run((SelectionAction::Translate, sel.clone()))
                             }>
-                                "Translate"
+                                "🌐 Translate"
                             </button>
                             <button on:click={
                                 let sel = sel.clone();
-    move |_| on_action.run((SelectionAction::ExplainTerm, sel.clone()))
+                                move |_| on_action.run((SelectionAction::ExplainTerm, sel.clone()))
                             }>
-                                "Explain Term"
+                                "💡 Term"
                             </button>
                             <button on:click={
                                 let sel = sel.clone();
-    move |_| on_action.run((SelectionAction::ExplainSentence, sel.clone()))
+                                move |_| on_action.run((SelectionAction::ExplainSentence, sel.clone()))
                             }>
-                                "Explain Sentence"
+                                "📖 Sentence"
                             </button>
                             <button class="dismiss-btn" on:click=move |_| on_dismiss.run(())>
                                 "✕"
@@ -46,5 +53,6 @@ pub fn SelectionPopover(
                     ().into_any()
                 }
             }}
-        }
+        </div>
+    }
 }

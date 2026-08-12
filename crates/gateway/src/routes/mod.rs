@@ -3,11 +3,15 @@ pub mod translate;
 
 use axum::{
     extract::{Request, State},
-    http::header::AUTHORIZATION,
+    http::{
+        header::{AUTHORIZATION, CONTENT_TYPE},
+        Method,
+    },
     middleware::{from_fn_with_state, Next},
     response::Response,
     Router,
 };
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::services::ai_client::AiClient;
 
@@ -21,6 +25,11 @@ pub struct GatewayState {
 pub fn build_router<A: AiClient + 'static>(ai_client: A, gateway_state: GatewayState) -> Router {
     let shared = std::sync::Arc::new(ai_client);
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
+
     let api_routes = Router::new()
         .merge(translate::routes(shared.clone()))
         .merge(explain::routes(shared))
@@ -29,6 +38,7 @@ pub fn build_router<A: AiClient + 'static>(ai_client: A, gateway_state: GatewayS
     Router::new()
         .route("/health", axum::routing::get(health_handler))
         .nest("/api", api_routes)
+        .layer(cors)
 }
 
 async fn health_handler() -> axum::Json<serde_json::Value> {

@@ -262,7 +262,12 @@ impl AiClient for StubAiClient {
         target_language: &str,
         _context: Option<&str>,
     ) -> Pin<Box<dyn Future<Output = String> + Send + '_>> {
-        let result = format!("[{}] {}", target_language, text);
+        let result = format!(
+            "⚠️ [Stub 模式] 未配置 AI API Key。\n\
+             原文 ({target_language}): {text}\n\n\
+             请在 Settings → Gateway 中设置 GATEWAY_AI_API_KEY 以启用真实翻译，\
+             或设置 GATEWAY_AI_USE_STUB=false 并配置 API Key。"
+        );
         Box::pin(async move { result })
     }
 
@@ -275,12 +280,13 @@ impl AiClient for StubAiClient {
     ) -> Pin<Box<dyn Future<Output = ExplainResult> + Send + '_>> {
         let result = ExplainResult {
             explanation: format!(
-                "[{} explanation of '{}' in {}]",
-                explanation_type, text, language
+                "⚠️ Stub 模式 — 未配置真实 AI 服务。\n\
+                 此处显示的是 `{text}` 的 {explanation_type} 解释占位符（{language}）。\n\n\
+                 要获得真实的 AI 解释，请在 .env 中设置 GATEWAY_AI_API_KEY 并重启 Gateway。"
             ),
-            background: Some("Additional context would appear here.".to_string()),
+            background: Some("当前运行在 Stub 模式下，所有 AI 输出均为占位符。".to_string()),
             caution: if explanation_type == "sentence" {
-                Some("This interpretation may vary by discipline.".to_string())
+                Some("Stub 模式无法提供真实的语义解释。".to_string())
             } else {
                 None
             },

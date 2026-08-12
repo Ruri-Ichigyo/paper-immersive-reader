@@ -26,6 +26,11 @@ target
 !.claude/archive/
 .claude/worktrees/
 
+# Environment variables (contains API keys)
+.env
+.env.local
+.env.*.local
+
 # Build artifacts
 dist/
 

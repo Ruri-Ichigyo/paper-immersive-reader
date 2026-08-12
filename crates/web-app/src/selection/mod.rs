@@ -10,7 +10,7 @@ pub struct TextSelection {
     pub end_offset: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionAction {
     Annotate,
     Translate,

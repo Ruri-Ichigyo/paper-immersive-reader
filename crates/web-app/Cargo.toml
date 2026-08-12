@@ -36,5 +36,5 @@ uuid = { version = "1", features = ["v4", "js"] }
 gloo-net = { version = "0.6", features = ["http", "json"] }
 
 [features]
-default = ["native-import"]
+default = []
 native-import = ["dep:paper-immersive-reader-importing"]

@@ -187,34 +187,52 @@ pub fn ReadPage() -> impl IntoView {
         });
     }
 
-    // Text selection handling
+    // Text selection handling — defer to next frame so the browser finalises
+    // the selection before we read it (avoids empty-selection race on mouseup).
     let on_mouse_up = Callback::new(move |_| {
-        let window = match web_sys::window() {
-            Some(w) => w,
-            None => return,
-        };
-        let sel = match window.get_selection() {
-            Ok(Some(s)) => s,
-            _ => return,
-        };
-        let text_js = sel.to_string();
-        let text = text_js.as_string().unwrap_or_default();
-        if text.trim().is_empty() {
-            selection.set(None);
-            return;
-        }
-        let block_id = match current_block_id() {
-            Some(id) => id,
-            None => return,
-        };
-        let block_text = current_block_text();
-        let (start, end) = find_offsets(&block_text, &text).unwrap_or((0, 0));
-        selection.set(Some(TextSelection {
-            block_id,
-            text,
-            start_offset: start,
-            end_offset: end,
-        }));
+        let block_id_for_sel = current_block_id();
+        let block_text_for_sel = current_block_text();
+        let selection_for_sel = selection;
+
+        // Capture the selection in the next animation frame
+        wasm_bindgen_futures::spawn_local(async move {
+            // yield one frame
+            let _ = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(
+                &mut |resolve, _| {
+                    let window = web_sys::window().unwrap();
+                    let _ = window.request_animation_frame(&resolve);
+                    drop(resolve);
+                },
+            ))
+            .await;
+
+            let window = match web_sys::window() {
+                Some(w) => w,
+                None => return,
+            };
+            let sel = match window.get_selection() {
+                Ok(Some(s)) => s,
+                _ => return,
+            };
+            let text_js = sel.to_string();
+            let text = text_js.as_string().unwrap_or_default();
+            if text.trim().is_empty() {
+                selection_for_sel.set(None);
+                return;
+            }
+            let block_id = match block_id_for_sel {
+                Some(id) => id,
+                None => return,
+            };
+            let block_text = block_text_for_sel;
+            let (start, end) = find_offsets(&block_text, &text).unwrap_or((0, 0));
+            selection_for_sel.set(Some(TextSelection {
+                block_id,
+                text,
+                start_offset: start,
+                end_offset: end,
+            }));
+        });
     });
 
     // Selection action handler
